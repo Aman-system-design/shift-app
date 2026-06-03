@@ -1710,6 +1710,7 @@
 
     if (!btn) return;
 
+    btn.addEventListener('click', async () => {
       if (state.notionDatabaseId) {
         if (!confirm('Unlink Notion Database? Stored data will not be deleted, but sync will stop.')) return;
         state.notionDatabaseId = null;
