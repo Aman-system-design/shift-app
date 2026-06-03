@@ -1154,9 +1154,7 @@
     container.innerHTML = review;
   }
 
-  // ========================
-  // SETTINGS
-  // ========================
+  function loadSettings() {
     $('#setting-name').value = state.settings.name || '';
     $('#setting-wake').value = state.settings.wakeTime || '06:00';
     $('#setting-sleep').value = state.settings.sleepTime || '00:00';
