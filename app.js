@@ -1259,6 +1259,82 @@
   }
 
   // ========================
+  // PERIODIC CHECK-IN SYSTEM
+  // "Someone is always watching"
+  // ========================
+  const CHECKIN_MESSAGES = [
+    { title: '⚡ STATUS CHECK', body: 'What are you doing RIGHT NOW? Is this what you should be doing?' },
+    { title: '👁 EYES ON YOU', body: 'Quick check — are you being productive or wasting time?' },
+    { title: '⏳ TIME CHECK', body: 'Another hour passed. What did you do with it?' },
+    { title: '🎯 ACCOUNTABILITY', body: 'At HCL you\'d be working right now. What about your own goals?' },
+    { title: '💀 MEMENTO MORI', body: 'This hour is gone forever. Did you use it or lose it?' },
+    { title: '🔥 REPORT IN', body: 'Soldier — what\'s your current status? On task or AWOL?' },
+    { title: '⚠ REALITY CHECK', body: 'CAT exam isn\'t getting further away. Are you studying or scrolling?' },
+    { title: '🪖 SHIFT CHECK', body: 'No one\'s watching? Wrong. YOU should be watching. What are you doing?' },
+  ];
+
+  let lastCheckinTime = Date.now();
+  let checkinInterval = null;
+
+  function getRandomCheckinDelay() {
+    // Random interval between 45-90 minutes (in ms)
+    return (45 + Math.floor(Math.random() * 45)) * 60 * 1000;
+  }
+
+  function isWithinWakingHours() {
+    const now = new Date();
+    const wakeStr = state.settings.wakeTime || '06:00';
+    const sleepStr = state.settings.sleepTime || '00:00';
+    const wakeMin = toMinutes(wakeStr);
+    let sleepMin = toMinutes(sleepStr);
+    if (sleepMin <= wakeMin) sleepMin += 24 * 60;
+
+    let nowMin = now.getHours() * 60 + now.getMinutes();
+    if (nowMin < wakeMin) nowMin += 24 * 60;
+
+    return nowMin >= wakeMin && nowMin < sleepMin;
+  }
+
+  function periodicCheckin() {
+    if (!state.settings.notifications) return;
+    if (!isWithinWakingHours()) return;
+
+    // Don't disturb if actively clocked in (they're already working)
+    if (state.session) {
+      scheduleNextCheckin();
+      return;
+    }
+
+    const msg = CHECKIN_MESSAGES[Math.floor(Math.random() * CHECKIN_MESSAGES.length)];
+    sendNotification(msg.title, msg.body);
+    lastCheckinTime = Date.now();
+    scheduleNextCheckin();
+  }
+
+  function scheduleNextCheckin() {
+    if (checkinInterval) clearTimeout(checkinInterval);
+    checkinInterval = setTimeout(periodicCheckin, getRandomCheckinDelay());
+  }
+
+  function initPeriodicCheckins() {
+    if (state.settings.notifications) {
+      scheduleNextCheckin();
+    }
+
+    // Also fire on visibility change — when user comes back to the app
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        const sinceLastCheckin = now - lastCheckinTime;
+        // If more than 30 min since last check and not clocked in, remind
+        if (sinceLastCheckin > 30 * 60 * 1000 && !state.session && isWithinWakingHours()) {
+          checkAWOL();
+        }
+      }
+    });
+  }
+
+  // ========================
   // MAIN LOOP
   // ========================
   function tick() {
@@ -1300,6 +1376,7 @@
     initAWOL();
     loadSettings();
     rotateQuote();
+    initPeriodicCheckins();
 
     // Initial renders
     renderShiftsList();
