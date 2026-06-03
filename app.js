@@ -1374,6 +1374,8 @@
       }
       return false;
     }
+  }
+
   // ========================
   // WEB AUDIO SYNTHESIZED ALARMS
   // ========================
