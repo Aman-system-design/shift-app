@@ -1402,7 +1402,43 @@
 
     const duration = isTest ? 1500 : 10000; // Limit tests to 1.5s, active alerts to 10s
 
-    if (tone === 'pulse') {
+    if (tone === 'slack') {
+      // Slack Huddle Ringtone: Pleasant, wooden double-pop chime sequence
+      const playChime = (time, freq, length, type = 'sine') => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.18, time + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + length);
+
+        osc.start(time);
+        osc.stop(time + length);
+      };
+
+      const triggerPattern = () => {
+        const now = audioCtx.currentTime;
+        // Slack huddle ringtone has a distinctive bouncy up-and-down chime melody:
+        playChime(now, 587.33, 0.25, 'triangle');       // D5
+        playChime(now + 0.12, 659.25, 0.25, 'triangle');  // E5
+        playChime(now + 0.24, 783.99, 0.35, 'sine');      // G5
+        playChime(now + 0.36, 587.33, 0.2, 'triangle');   // D5
+        playChime(now + 0.48, 659.25, 0.4, 'sine');       // E5
+      };
+
+      let offset = 0;
+      alarmInterval = setInterval(() => {
+        triggerPattern();
+        offset += 1500;
+        if (offset >= duration) clearInterval(alarmInterval);
+      }, 1500);
+      triggerPattern();
+
+    } else if (tone === 'pulse') {
       // Pleasant yet Urgent: Double high-pitch sweet chime pulses
       let startTime = audioCtx.currentTime;
       const playPulse = (time, freq, length) => {
