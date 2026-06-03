@@ -190,7 +190,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing databaseId or shift info.' });
       }
 
-      // Query Notion to get page ID
+      let existingPageId = null;
+
+      // 1. Try querying Notion to see if there is a page with this LocalShiftId
       const queryResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
         method: 'POST',
         headers: {
@@ -210,8 +212,15 @@ export default async function handler(req, res) {
       const existingPage = queryData.results && queryData.results[0];
 
       if (existingPage) {
+        existingPageId = existingPage.id;
+      } else {
+        // 2. Fallback: If no LocalShiftId matches, the shift.id itself is likely the Notion page ID (created directly on Notion)
+        existingPageId = shift.id;
+      }
+
+      if (existingPageId) {
         // Archive/Delete page in Notion
-        const deleteResponse = await fetch(`https://api.notion.com/v1/pages/${existingPage.id}`, {
+        const deleteResponse = await fetch(`https://api.notion.com/v1/pages/${existingPageId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -225,7 +234,10 @@ export default async function handler(req, res) {
 
         if (!deleteResponse.ok) {
           const deleteData = await deleteResponse.json();
-          return res.status(deleteResponse.status).json({ error: deleteData.message || 'Failed to delete shift page.' });
+          // If direct page archive returns 404/error, ignore (already deleted or invalid ID)
+          if (deleteResponse.status !== 404) {
+            return res.status(deleteResponse.status).json({ error: deleteData.message || 'Failed to delete shift page.' });
+          }
         }
       }
 
