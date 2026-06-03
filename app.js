@@ -1182,13 +1182,31 @@
     if (!('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
 
-    try {
-      new Notification(title, {
-        body: body,
-        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="%230a0a0f"/><text x="32" y="44" text-anchor="middle" font-size="36" font-family="monospace" font-weight="bold" fill="%2300d4aa">S</text></svg>',
-        vibrate: [200, 100, 200],
+    // Use service worker for persistent notifications when possible
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.showNotification(title, {
+          body: body,
+          icon: './icon-192.svg',
+          badge: './icon-192.svg',
+          vibrate: [200, 100, 200],
+          tag: 'shift-alert-' + Date.now(),
+          renotify: true,
+          requireInteraction: true,
+          actions: [
+            { action: 'clock-in', title: 'CLOCK IN' },
+            { action: 'dismiss', title: 'DISMISS' }
+          ]
+        });
+      }).catch(() => {
+        // Fallback to basic notification
+        new Notification(title, { body, vibrate: [200, 100, 200] });
       });
-    } catch (e) { /* SW might handle this instead */ }
+    } else {
+      try {
+        new Notification(title, { body, vibrate: [200, 100, 200] });
+      } catch (e) { /* ignore */ }
+    }
   }
 
   // ========================
@@ -1261,6 +1279,20 @@
   // ========================
   function init() {
     registerSW();
+
+    // Listen for messages from service worker (e.g., clock-in from notification)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data && e.data.type === 'CLOCK_IN_FROM_NOTIFICATION') {
+          const now = new Date();
+          const activeShift = getActiveShift(now);
+          if (activeShift && !state.session) {
+            clockIn(activeShift);
+          }
+        }
+      });
+    }
+
     initNav();
     initShiftForm();
     initClockEvents();

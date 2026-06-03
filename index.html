@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#0a0a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/svg+xml" href="icon-192.svg">
+  <link rel="apple-touch-icon" href="icon-192.svg">
   <meta name="description" content="SHIFT — Military-grade accountability for your personal life.">
   <title>SHIFT — Command Center</title>
   <link rel="manifest" href="manifest.json">
@@ -84,60 +86,47 @@
         <p class="quote-author" id="stoic-author">— Seneca</p>
       </div>
 
-      <!-- Master Clock -->
-      <div class="card card-clock">
-        <div class="card-header">
-          <span class="card-tag">MASTER CLOCK</span>
-          <span class="card-date" id="current-date">—</span>
+      <!-- Compact Status Row: Waking Hours + CAT Countdown -->
+      <div class="status-row">
+        <div class="status-card card-waking">
+          <div class="status-card-header">
+            <span class="card-tag">HOURS LEFT</span>
+            <span class="status-value" id="waking-hours-text">--h --m</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="waking-bar"></div>
+              <div class="progress-bar-glow" id="waking-bar-glow"></div>
+            </div>
+          </div>
         </div>
-        <div class="master-time" id="master-clock">00:00:00</div>
-        <div class="master-period" id="master-period">AM</div>
+        <div class="status-card card-countdown-compact">
+          <div class="status-card-header">
+            <span class="card-tag">CAT EXAM</span>
+            <span class="card-tag tag-urgent" id="cat-urgency">—</span>
+          </div>
+          <div class="countdown-compact">
+            <span class="countdown-big" id="cat-days">---</span>
+            <span class="countdown-unit-label">DAYS</span>
+            <span class="countdown-small" id="cat-hours">--</span>
+            <span class="countdown-unit-label">HRS</span>
+            <span class="countdown-small" id="cat-mins">--</span>
+            <span class="countdown-unit-label">MIN</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Waking Hours -->
-      <div class="card card-waking">
-        <div class="card-header">
-          <span class="card-tag">WAKING HOURS REMAINING</span>
-          <span class="card-value" id="waking-hours-text">--h --m</span>
-        </div>
-        <div class="progress-bar-container">
-          <div class="progress-bar-track">
-            <div class="progress-bar-fill" id="waking-bar"></div>
-            <div class="progress-bar-glow" id="waking-bar-glow"></div>
-          </div>
-        </div>
-        <div class="progress-labels">
-          <span id="wake-label">06:00</span>
-          <span id="sleep-label">00:00</span>
-        </div>
-      </div>
+      <!-- Hidden seconds counter for JS (not displayed) -->
+      <span id="cat-secs" class="hidden">--</span>
 
-      <!-- CAT Countdown -->
-      <div class="card card-countdown">
+      <!-- Current Duty -->
+      <div class="card card-duty" id="current-duty-card">
         <div class="card-header">
-          <span class="card-tag">CAT EXAM COUNTDOWN</span>
-          <span class="card-tag tag-urgent" id="cat-urgency">—</span>
+          <span class="card-tag">CURRENT DUTY</span>
+          <span class="card-tag tag-live" id="duty-status">NO ACTIVE SHIFT</span>
         </div>
-        <div class="countdown-grid">
-          <div class="countdown-unit">
-            <span class="countdown-value" id="cat-days">---</span>
-            <span class="countdown-label">DAYS</span>
-          </div>
-          <div class="countdown-sep">:</div>
-          <div class="countdown-unit">
-            <span class="countdown-value" id="cat-hours">--</span>
-            <span class="countdown-label">HRS</span>
-          </div>
-          <div class="countdown-sep">:</div>
-          <div class="countdown-unit">
-            <span class="countdown-value" id="cat-mins">--</span>
-            <span class="countdown-label">MIN</span>
-          </div>
-          <div class="countdown-sep">:</div>
-          <div class="countdown-unit">
-            <span class="countdown-value" id="cat-secs">--</span>
-            <span class="countdown-label">SEC</span>
-          </div>
+        <div class="duty-info" id="duty-info">
+          <p class="duty-message">No shift currently active. Check your schedule below.</p>
         </div>
       </div>
 
@@ -154,17 +143,6 @@
         <div class="stat-card">
           <span class="stat-value" id="current-streak">0</span>
           <span class="stat-label">DAY STREAK</span>
-        </div>
-      </div>
-
-      <!-- Current Duty / Today's Schedule -->
-      <div class="card card-duty" id="current-duty-card">
-        <div class="card-header">
-          <span class="card-tag">CURRENT DUTY</span>
-          <span class="card-tag tag-live" id="duty-status">NO ACTIVE SHIFT</span>
-        </div>
-        <div class="duty-info" id="duty-info">
-          <p class="duty-message">No shift currently active. Check your schedule below.</p>
         </div>
       </div>
 

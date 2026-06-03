@@ -1483,6 +1483,87 @@ body::after {
   50% { opacity: 0.4; }
 }
 
+/* ---- COMPACT STATUS ROW ---- */
+.status-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.status-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  transition: border-color 0.3s;
+}
+
+.status-card:hover {
+  border-color: var(--border-glow);
+}
+
+.status-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.status-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.status-card .progress-bar-container {
+  margin: 0;
+}
+
+.status-card .progress-bar-track {
+  height: 8px;
+}
+
+/* Compact CAT Countdown */
+.card-countdown-compact {
+  border-color: rgba(14,165,233,0.1);
+  background: linear-gradient(135deg, var(--bg-card), rgba(14,165,233,0.03));
+}
+
+.countdown-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.countdown-big {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.countdown-small {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.countdown-unit-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  letter-spacing: 1.5px;
+  margin-right: 6px;
+}
+
 /* ---- RESPONSIVE ---- */
 @media (max-width: 480px) {
   .main-content {
@@ -1528,6 +1609,13 @@ body::after {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .status-row {
+    grid-template-columns: 1fr;
+  }
+  .countdown-big {
+    font-size: 26px;
   }
 }
 
