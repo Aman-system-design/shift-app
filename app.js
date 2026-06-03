@@ -664,16 +664,28 @@
 
   function deleteShift(id) {
     if (!confirm('Delete this shift? This action is permanent.')) return;
+    
+    // 1. Instantly remove from local schedule state
     state.shifts = state.shifts.filter(s => s.id !== id);
+    
+    // 2. Queue the delete operation in Notion backlog
     if (state.notionShiftsDatabaseId && !state.notionShiftSyncBacklog.includes(id)) {
       state.notionShiftSyncBacklog.push(id);
     }
+    
+    // 3. Persist and redraw UI immediately
     persist();
     renderShiftsList();
     renderTodaySchedule();
 
-    // Delete shift template from Notion immediately
-    syncNotionShift({ id }, true);
+    // 4. Force Notion to delete it now (will remove from backlog when done)
+    syncNotionShift({ id }, true).then(success => {
+      if (success) {
+        state.notionShiftSyncBacklog = state.notionShiftSyncBacklog.filter(x => x !== id);
+        persist();
+        updateNotionUI();
+      }
+    });
   }
 
   // ========================
