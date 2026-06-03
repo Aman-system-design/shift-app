@@ -31,7 +31,8 @@ self.addEventListener('activate', e => {
 // Fetch: cache-first for app shell, network-first for everything else
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (url.origin === location.origin) {
+  // Exclude API requests from being cached by the service worker
+  if (url.origin === location.origin && !url.pathname.startsWith('/api')) {
     e.respondWith(
       caches.match(e.request).then(cached => {
         const networkFetch = fetch(e.request).then(response => {

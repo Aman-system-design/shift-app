@@ -71,6 +71,9 @@
       notifications: false,
     }),
     streaks: load('streaks', { current: 0, best: 0, lastDate: null }),
+    notionDatabaseId: load('notionDatabaseId', null),
+    notionDatabaseUrl: load('notionDatabaseUrl', null),
+    notionSyncBacklog: load('notionSyncBacklog', []), // List of log IDs that failed to sync to Notion
   };
 
   function persist() {
@@ -79,6 +82,9 @@
     save('session', state.session);
     save('settings', state.settings);
     save('streaks', state.streaks);
+    save('notionDatabaseId', state.notionDatabaseId);
+    save('notionDatabaseUrl', state.notionDatabaseUrl);
+    save('notionSyncBacklog', state.notionSyncBacklog);
   }
 
   // ========================
@@ -702,6 +708,9 @@
     renderTodaySchedule();
     updateDutyCard(now);
     updateQuickStats();
+
+    // Trigger async Notion sync
+    syncNotionLog(log);
   }
 
   function renderClockTab() {
@@ -855,7 +864,7 @@
         const existingLog = state.logs.find(l => l.shiftId === shift.id && l.date === todayStr);
         if (!existingLog && !(state.session && state.session.shiftId === shift.id)) {
           // Mark as missed
-          state.logs.push({
+          const missedLog = {
             id: genId(),
             shiftId: shift.id,
             shiftName: shift.name,
@@ -867,8 +876,10 @@
             notes: '',
             rating: 0,
             status: 'missed',
-          });
+          };
+          state.logs.push(missedLog);
           persist();
+          syncNotionLog(missedLog);
         }
       }
     });
@@ -1169,10 +1180,168 @@
       state.session = null;
       state.settings = { name: '', wakeTime: '06:00', sleepTime: '00:00', catDate: '2026-11-23', notifications: false };
       state.streaks = { current: 0, best: 0, lastDate: null };
+      state.notionDatabaseId = null;
+      state.notionDatabaseUrl = null;
+      state.notionSyncBacklog = [];
       persist();
       location.reload();
     });
   }
+
+  // ========================
+  // NOTION DATABASE SYNC
+  // ========================
+  async function syncNotionLog(log) {
+    if (!state.notionDatabaseId) return false;
+
+    // Show sync indicator status as syncing
+    const indicator = $('#notion-sync-indicator');
+    if (indicator) {
+      indicator.style.background = '#f59e0b';
+      indicator.setAttribute('title', 'Syncing to Notion...');
+    }
+
+    try {
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          databaseId: state.notionDatabaseId,
+          log: log,
+          callsign: state.settings.name || 'Operator'
+        })
+      });
+
+      const res = await response.json();
+      if (response.ok && res.success) {
+        // Successfully synced
+        if (indicator) {
+          indicator.style.background = '#00d4aa';
+          indicator.setAttribute('title', 'Notion Synced');
+        }
+        // Remove from backlog if it was there
+        state.notionSyncBacklog = state.notionSyncBacklog.filter(id => id !== log.id);
+        persist();
+        return true;
+      } else {
+        throw new Error(res.error || 'Failed to sync');
+      }
+    } catch (e) {
+      console.warn('Notion Sync Failed, queued in backlog:', e);
+      if (indicator) {
+        indicator.style.background = '#ef4444';
+        indicator.setAttribute('title', 'Sync Error: Queued');
+      }
+      if (!state.notionSyncBacklog.includes(log.id)) {
+        state.notionSyncBacklog.push(log.id);
+        persist();
+      }
+      return false;
+    }
+  }
+
+  async function processSyncBacklog() {
+    if (!state.notionDatabaseId || state.notionSyncBacklog.length === 0) {
+      updateNotionUI();
+      return;
+    }
+
+    const backlog = [...state.notionSyncBacklog];
+    for (const logId of backlog) {
+      const log = state.logs.find(l => l.id === logId);
+      if (log) {
+        const success = await syncNotionLog(log);
+        if (!success) break; // Network offline or rate limit, stop and retry later
+      } else {
+        // Log doesn't exist anymore, remove it
+        state.notionSyncBacklog = state.notionSyncBacklog.filter(id => id !== logId);
+        persist();
+      }
+    }
+    updateNotionUI();
+  }
+
+  function updateNotionUI() {
+    const indicator = $('#notion-sync-indicator');
+    const statusText = $('#notion-connection-status');
+    const initBtn = $('#btn-init-notion');
+    const linkContainer = $('#notion-link-container');
+    const dbUrl = $('#notion-db-url');
+
+    if (!indicator) return;
+
+    if (state.notionDatabaseId) {
+      if (state.notionSyncBacklog.length > 0) {
+        indicator.style.background = '#ef4444';
+        indicator.setAttribute('title', `${state.notionSyncBacklog.length} shifts pending sync`);
+        if (statusText) statusText.textContent = `PENDING SYNC (${state.notionSyncBacklog.length})`;
+      } else {
+        indicator.style.background = '#00d4aa';
+        indicator.setAttribute('title', 'Notion Connected & Synced');
+        if (statusText) statusText.textContent = 'CONNECTED';
+      }
+      if (initBtn) initBtn.textContent = 'RESET CONNECTION';
+      if (linkContainer) linkContainer.classList.remove('hidden');
+      if (dbUrl && state.notionDatabaseUrl) {
+        dbUrl.href = state.notionDatabaseUrl;
+      }
+    } else {
+      indicator.style.background = '#6b7280';
+      indicator.setAttribute('title', 'Notion Unlinked');
+      if (statusText) statusText.textContent = 'UNLINKED';
+      if (initBtn) initBtn.textContent = 'LINK NOTION DATABASE';
+      if (linkContainer) linkContainer.classList.add('hidden');
+    }
+  }
+
+  function initNotionEvents() {
+    const btn = $('#btn-init-notion');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+      if (state.notionDatabaseId) {
+        if (!confirm('Unlink Notion Database? Stored data will not be deleted, but sync will stop.')) return;
+        state.notionDatabaseId = null;
+        state.notionDatabaseUrl = null;
+        state.notionSyncBacklog = [];
+        persist();
+        updateNotionUI();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'CREATING NOTION DATABASE...';
+
+      try {
+        const response = await fetch('/api/init-database', {
+          method: 'POST'
+        });
+
+        const res = await response.json();
+        if (response.ok && res.success) {
+          state.notionDatabaseId = res.databaseId;
+          state.notionDatabaseUrl = res.url;
+          
+          // Add all existing logs to backlog so history is backfilled into Notion
+          state.notionSyncBacklog = state.logs.map(l => l.id);
+          persist();
+          
+          alert('Notion Database constructed and connected successfully! Pushing existing history in background.');
+          processSyncBacklog();
+        } else {
+          alert(`Error initializing database: ${res.error || 'Unknown error'}`);
+        }
+      } catch (e) {
+        alert(`Request failed: ${e.message}`);
+      } finally {
+        btn.disabled = false;
+        updateNotionUI();
+      }
+    });
+  }
+
 
   // ========================
   // NOTIFICATIONS
@@ -1377,6 +1546,9 @@
     loadSettings();
     rotateQuote();
     initPeriodicCheckins();
+    initNotionEvents();
+    updateNotionUI();
+    processSyncBacklog();
 
     // Initial renders
     renderShiftsList();
@@ -1390,13 +1562,19 @@
     setInterval(tick, 1000);
 
     // Slow tick — every 15 seconds
-    setInterval(slowTick, 15000);
+    setInterval(() => {
+      slowTick();
+      processSyncBacklog();
+    }, 15000);
 
     // Quote rotation — every 60 seconds
     setInterval(rotateQuote, 60000);
 
     // Initial slow tick
-    setTimeout(slowTick, 1000);
+    setTimeout(() => {
+      slowTick();
+      processSyncBacklog();
+    }, 1000);
   }
 
   // ========================

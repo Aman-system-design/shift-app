@@ -44,6 +44,7 @@
     <div class="topbar-right">
       <div class="topbar-clock" id="topbar-clock">--:--:--</div>
       <div class="topbar-status" id="topbar-status">
+        <span class="status-dot offline" id="notion-sync-indicator" style="background:#6b7280;margin-right:8px;" title="Notion Unlinked"></span>
         <span class="status-dot offline"></span>
         <span class="status-label">OFF DUTY</span>
       </div>
@@ -449,6 +450,21 @@
             </button>
           </div>
           <p class="form-hint" id="notif-status">Notifications not enabled</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">NOTION DATABASE</span></div>
+        <div class="form-group">
+          <div class="toggle-row" style="margin-bottom: 12px;">
+            <span>Notion Sync Status</span>
+            <span class="status-badge" id="notion-connection-status" style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">UNLINKED</span>
+          </div>
+          <button class="btn btn-accent btn-block" id="btn-init-notion">LINK NOTION DATABASE</button>
+          <div id="notion-link-container" class="hidden" style="margin-top: 12px;">
+            <p class="form-hint" style="margin-bottom: 8px;">Database Connected successfully. View logs here:</p>
+            <a id="notion-db-url" href="#" target="_blank" class="btn btn-ghost btn-block" style="text-align:center;text-decoration:none;display:block;">OPEN NOTION DB ↗</a>
+          </div>
         </div>
       </div>
 
