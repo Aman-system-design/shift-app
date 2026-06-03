@@ -665,11 +665,14 @@
   function deleteShift(id) {
     if (!confirm('Delete this shift? This action is permanent.')) return;
     state.shifts = state.shifts.filter(s => s.id !== id);
+    if (state.notionShiftsDatabaseId && !state.notionShiftSyncBacklog.includes(id)) {
+      state.notionShiftSyncBacklog.push(id);
+    }
     persist();
     renderShiftsList();
     renderTodaySchedule();
 
-    // Delete shift template from Notion
+    // Delete shift template from Notion immediately
     syncNotionShift({ id }, true);
   }
 
@@ -1428,10 +1431,10 @@
     }
   }
 
-  async function pullNotionShifts() {
+  async function pullNotionShifts(quiet = false) {
     if (!state.notionShiftsDatabaseId) return;
     const pullBtn = $('#btn-pull-notion');
-    if (pullBtn) {
+    if (pullBtn && !quiet) {
       pullBtn.disabled = true;
       pullBtn.textContent = 'PULLING...';
     }
@@ -1453,7 +1456,7 @@
         const incomingShifts = res.shifts || [];
         
         if (incomingShifts.length === 0) {
-          alert('No shift targets found in Notion database.');
+          if (!quiet) alert('No shift targets found in Notion database.');
           return;
         }
 
@@ -1478,14 +1481,14 @@
         renderShiftsList();
         renderTodaySchedule();
         updateQuickStats();
-        alert(`Successfully synced ${incomingShifts.length} shifts from Notion!`);
+        if (!quiet) alert(`Successfully synced ${incomingShifts.length} shifts from Notion!`);
       } else {
-        alert(`Failed to pull shifts: ${res.error || 'Unknown error'}`);
+        if (!quiet) alert(`Failed to pull shifts: ${res.error || 'Unknown error'}`);
       }
     } catch (e) {
-      alert(`Network error pulling shifts: ${e.message}`);
+      if (!quiet) alert(`Network error pulling shifts: ${e.message}`);
     } finally {
-      if (pullBtn) {
+      if (pullBtn && !quiet) {
         pullBtn.disabled = false;
         pullBtn.textContent = '↓ PULL NOTION';
       }
@@ -1773,6 +1776,7 @@
     setInterval(() => {
       slowTick();
       processSyncBacklog();
+      pullNotionShifts(true); // Quiet auto-pull on tick
     }, 15000);
 
     // Quote rotation — every 60 seconds
@@ -1782,6 +1786,7 @@
     setTimeout(() => {
       slowTick();
       processSyncBacklog();
+      pullNotionShifts(true); // Quiet pull on init
     }, 1000);
   }
 
