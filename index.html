@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="SHIFT — Military-grade accountability for your personal life.">
+  <title>SHIFT — Command Center</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==================== AWOL ALERT OVERLAY ==================== -->
+  <div id="awol-alert" class="awol-alert hidden">
+    <div class="awol-alert-inner">
+      <div class="awol-pulse-ring"></div>
+      <div class="awol-icon">⚠</div>
+      <div class="awol-label">ACTIVE SHIFT DETECTED</div>
+      <div class="awol-shift-name" id="awol-shift-name">—</div>
+      <div class="awol-message">You are currently AWOL. Clock in or stand down.</div>
+      <div class="awol-actions">
+        <button class="btn btn-accent btn-lg" id="awol-clock-in">CLOCK IN NOW</button>
+        <button class="btn btn-ghost btn-sm" id="awol-dismiss">DISMISS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TOP BAR ==================== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">
+        <span class="logo-icon">◆</span>
+        <span class="logo-text">SHIFT</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-clock" id="topbar-clock">--:--:--</div>
+      <div class="topbar-status" id="topbar-status">
+        <span class="status-dot offline"></span>
+        <span class="status-label">OFF DUTY</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== NAV TABS ==================== -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="command">
+      <span class="nav-icon">◎</span>
+      <span class="nav-label">COMMAND</span>
+    </button>
+    <button class="nav-tab" data-tab="shifts">
+      <span class="nav-icon">▦</span>
+      <span class="nav-label">SHIFTS</span>
+    </button>
+    <button class="nav-tab" data-tab="clock">
+      <span class="nav-icon">⏱</span>
+      <span class="nav-label">CLOCK</span>
+    </button>
+    <button class="nav-tab" data-tab="stats">
+      <span class="nav-icon">◩</span>
+      <span class="nav-label">INTEL</span>
+    </button>
+    <button class="nav-tab" data-tab="settings">
+      <span class="nav-icon">⚙</span>
+      <span class="nav-label">CONFIG</span>
+    </button>
+  </nav>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="main-content">
+
+    <!-- ====== COMMAND CENTER TAB ====== -->
+    <section class="tab-panel active" id="panel-command">
+      
+      <!-- Quote Banner -->
+      <div class="quote-banner">
+        <p class="quote-text" id="stoic-quote">"It is not that we have a short time to live, but that we waste a great deal of it."</p>
+        <p class="quote-author" id="stoic-author">— Seneca</p>
+      </div>
+
+      <!-- Master Clock -->
+      <div class="card card-clock">
+        <div class="card-header">
+          <span class="card-tag">MASTER CLOCK</span>
+          <span class="card-date" id="current-date">—</span>
+        </div>
+        <div class="master-time" id="master-clock">00:00:00</div>
+        <div class="master-period" id="master-period">AM</div>
+      </div>
+
+      <!-- Waking Hours -->
+      <div class="card card-waking">
+        <div class="card-header">
+          <span class="card-tag">WAKING HOURS REMAINING</span>
+          <span class="card-value" id="waking-hours-text">--h --m</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="waking-bar"></div>
+            <div class="progress-bar-glow" id="waking-bar-glow"></div>
+          </div>
+        </div>
+        <div class="progress-labels">
+          <span id="wake-label">06:00</span>
+          <span id="sleep-label">00:00</span>
+        </div>
+      </div>
+
+      <!-- CAT Countdown -->
+      <div class="card card-countdown">
+        <div class="card-header">
+          <span class="card-tag">CAT EXAM COUNTDOWN</span>
+          <span class="card-tag tag-urgent" id="cat-urgency">—</span>
+        </div>
+        <div class="countdown-grid">
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cat-days">---</span>
+            <span class="countdown-label">DAYS</span>
+          </div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cat-hours">--</span>
+            <span class="countdown-label">HRS</span>
+          </div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cat-mins">--</span>
+            <span class="countdown-label">MIN</span>
+          </div>
+          <div class="countdown-sep">:</div>
+          <div class="countdown-unit">
+            <span class="countdown-value" id="cat-secs">--</span>
+            <span class="countdown-label">SEC</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats Row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="today-completed">0</span>
+          <span class="stat-label">SHIFTS TODAY</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="today-missed">0</span>
+          <span class="stat-label">MISSED</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="current-streak">0</span>
+          <span class="stat-label">DAY STREAK</span>
+        </div>
+      </div>
+
+      <!-- Current Duty / Today's Schedule -->
+      <div class="card card-duty" id="current-duty-card">
+        <div class="card-header">
+          <span class="card-tag">CURRENT DUTY</span>
+          <span class="card-tag tag-live" id="duty-status">NO ACTIVE SHIFT</span>
+        </div>
+        <div class="duty-info" id="duty-info">
+          <p class="duty-message">No shift currently active. Check your schedule below.</p>
+        </div>
+      </div>
+
+      <!-- Today's Shifts -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">TODAY'S SCHEDULE</span>
+        </div>
+        <div class="schedule-list" id="today-schedule">
+          <div class="empty-state">No shifts scheduled for today. Define your ops in SHIFTS tab.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== SHIFTS TAB ====== -->
+    <section class="tab-panel" id="panel-shifts">
+      <div class="section-header">
+        <h2>SHIFT ROSTER</h2>
+        <button class="btn btn-accent" id="btn-add-shift">+ NEW SHIFT</button>
+      </div>
+
+      <!-- Shift Form Modal -->
+      <div class="modal-overlay hidden" id="shift-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 id="modal-title">DEFINE NEW SHIFT</h3>
+            <button class="btn-close" id="modal-close">✕</button>
+          </div>
+          <form id="shift-form">
+            <input type="hidden" id="shift-edit-id">
+            <div class="form-group">
+              <label>SHIFT NAME</label>
+              <input type="text" id="shift-name" placeholder="e.g. CAT Quant Drill" required>
+            </div>
+            <div class="form-group">
+              <label>CATEGORY</label>
+              <select id="shift-category">
+                <option value="CAT Prep">CAT PREP</option>
+                <option value="Fitness">FITNESS</option>
+                <option value="Coding">CODING</option>
+                <option value="Reading">READING</option>
+                <option value="Deep Work">DEEP WORK</option>
+                <option value="Custom">CUSTOM</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>START TIME</label>
+                <input type="time" id="shift-start" required>
+              </div>
+              <div class="form-group">
+                <label>END TIME</label>
+                <input type="time" id="shift-end" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>ACTIVE DAYS</label>
+              <div class="day-picker" id="day-picker">
+                <button type="button" class="day-btn" data-day="0">SUN</button>
+                <button type="button" class="day-btn" data-day="1">MON</button>
+                <button type="button" class="day-btn" data-day="2">TUE</button>
+                <button type="button" class="day-btn" data-day="3">WED</button>
+                <button type="button" class="day-btn" data-day="4">THU</button>
+                <button type="button" class="day-btn" data-day="5">FRI</button>
+                <button type="button" class="day-btn" data-day="6">SAT</button>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="btn-cancel-shift">CANCEL</button>
+              <button type="submit" class="btn btn-accent">DEPLOY SHIFT</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Shift List -->
+      <div class="shifts-list" id="shifts-list">
+        <div class="empty-state">No shifts defined. Your command center is empty.<br>Hit "+ NEW SHIFT" to begin operations.</div>
+      </div>
+    </section>
+
+    <!-- ====== CLOCK IN/OUT TAB ====== -->
+    <section class="tab-panel" id="panel-clock">
+      <div class="section-header">
+        <h2>CLOCK IN / OUT</h2>
+      </div>
+
+      <!-- Active Session Display -->
+      <div class="card card-session" id="session-card">
+        <div id="clock-no-session">
+          <div class="empty-state-large">
+            <div class="empty-icon">⏸</div>
+            <h3>NO ACTIVE SESSION</h3>
+            <p>Select an active shift below to clock in, soldier.</p>
+          </div>
+        </div>
+        <div id="clock-active-session" class="hidden">
+          <div class="session-header">
+            <span class="card-tag tag-live pulse">ON DUTY</span>
+            <span class="session-shift-name" id="session-shift-name">—</span>
+          </div>
+          <div class="session-timer" id="session-timer">00:00:00</div>
+          <div class="session-meta">
+            <span>Clocked in at <strong id="session-start-time">--:--</strong></span>
+            <span>Shift ends at <strong id="session-end-time">--:--</strong></span>
+          </div>
+          <div class="checkin-prompt hidden" id="checkin-prompt">
+            <p>⚡ STILL ON TASK, SOLDIER?</p>
+            <div class="checkin-actions">
+              <button class="btn btn-accent btn-sm" id="checkin-yes">AFFIRM</button>
+              <button class="btn btn-danger btn-sm" id="checkin-no">NEGATIVE — CLOCK OUT</button>
+            </div>
+          </div>
+          <button class="btn btn-danger btn-lg btn-block" id="btn-clock-out">CLOCK OUT</button>
+        </div>
+      </div>
+
+      <!-- Clock Out Debrief Modal -->
+      <div class="modal-overlay hidden" id="debrief-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3>DEBRIEF</h3>
+          </div>
+          <form id="debrief-form">
+            <div class="form-group">
+              <label>WHAT DID YOU ACCOMPLISH?</label>
+              <textarea id="debrief-notes" rows="4" placeholder="Brief debrief. What got done?"></textarea>
+            </div>
+            <div class="form-group">
+              <label>MISSION RATING</label>
+              <div class="rating-picker" id="rating-picker">
+                <button type="button" class="rating-btn" data-rating="1">1</button>
+                <button type="button" class="rating-btn" data-rating="2">2</button>
+                <button type="button" class="rating-btn" data-rating="3">3</button>
+                <button type="button" class="rating-btn" data-rating="4">4</button>
+                <button type="button" class="rating-btn" data-rating="5">5</button>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="debrief-skip">SKIP</button>
+              <button type="submit" class="btn btn-accent">LOG DEBRIEF</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Available Shifts to Clock Into -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">AVAILABLE SHIFTS</span>
+        </div>
+        <div class="clockable-shifts" id="clockable-shifts">
+          <div class="empty-state">No shifts available right now.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== STATS/INTEL TAB ====== -->
+    <section class="tab-panel" id="panel-stats">
+      <div class="section-header">
+        <h2>INTELLIGENCE REPORT</h2>
+      </div>
+
+      <!-- Truth Section -->
+      <div class="card card-truth">
+        <div class="card-header">
+          <span class="card-tag tag-danger">THE TRUTH</span>
+        </div>
+        <div class="truth-content" id="truth-content">
+          <p class="truth-line">Start logging shifts to see the truth about your effort.</p>
+        </div>
+      </div>
+
+      <!-- Weekly Hours by Category -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">THIS WEEK — HOURS BY CATEGORY</span>
+        </div>
+        <div class="bar-chart" id="category-chart">
+          <div class="empty-state">No data yet. Put in the hours.</div>
+        </div>
+      </div>
+
+      <!-- Completion Rate -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">MISSION COMPLETION RATE</span>
+        </div>
+        <div class="completion-stats" id="completion-stats">
+          <div class="completion-ring-container">
+            <svg class="completion-ring" viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52" />
+              <circle class="ring-fill" cx="60" cy="60" r="52" id="completion-ring-fill" />
+            </svg>
+            <div class="completion-ring-value" id="completion-rate">0%</div>
+          </div>
+          <div class="completion-details">
+            <div class="completion-detail">
+              <span class="detail-value" id="stat-completed">0</span>
+              <span class="detail-label">COMPLETED</span>
+            </div>
+            <div class="completion-detail">
+              <span class="detail-value detail-danger" id="stat-missed">0</span>
+              <span class="detail-label">MISSED / AWOL</span>
+            </div>
+            <div class="completion-detail">
+              <span class="detail-value" id="stat-total-hours">0h</span>
+              <span class="detail-label">HOURS LOGGED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Streaks -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-value" id="stat-current-streak">0</span>
+          <span class="stat-label">CURRENT STREAK</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="stat-best-streak">0</span>
+          <span class="stat-label">BEST STREAK</span>
+        </div>
+      </div>
+
+      <!-- Weekly Performance -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">WEEKLY PERFORMANCE REVIEW</span>
+        </div>
+        <div class="weekly-review" id="weekly-review">
+          <p class="review-text">Complete a full week of operations to receive your performance review.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== SETTINGS TAB ====== -->
+    <section class="tab-panel" id="panel-settings">
+      <div class="section-header">
+        <h2>CONFIGURATION</h2>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">OPERATOR PROFILE</span></div>
+        <div class="form-group">
+          <label>CALLSIGN</label>
+          <input type="text" id="setting-name" placeholder="Your name, soldier">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">WAKING HOURS</span></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>WAKE TIME</label>
+            <input type="time" id="setting-wake" value="06:00">
+          </div>
+          <div class="form-group">
+            <label>SLEEP TIME</label>
+            <input type="time" id="setting-sleep" value="00:00">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">CAT EXAM DATE</span></div>
+        <div class="form-group">
+          <label>TARGET DATE</label>
+          <input type="date" id="setting-cat-date" value="2026-11-23">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">NOTIFICATIONS</span></div>
+        <div class="form-group">
+          <div class="toggle-row">
+            <span>Enable shift notifications</span>
+            <button class="toggle-btn" id="toggle-notifications">
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+          <p class="form-hint" id="notif-status">Notifications not enabled</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">DATA OPERATIONS</span></div>
+        <div class="form-actions" style="flex-direction:column;gap:10px;">
+          <button class="btn btn-ghost btn-block" id="btn-export">EXPORT ALL DATA</button>
+          <button class="btn btn-danger btn-block" id="btn-clear-data">PURGE ALL DATA</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-tag">SYSTEM</span></div>
+        <div class="system-info">
+          <p>SHIFT v1.0.0 — Command Center</p>
+          <p class="form-hint">Built for operators who refuse to waste time.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
