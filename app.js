@@ -73,7 +73,10 @@
     streaks: load('streaks', { current: 0, best: 0, lastDate: null }),
     notionDatabaseId: load('notionDatabaseId', null),
     notionDatabaseUrl: load('notionDatabaseUrl', null),
+    notionShiftsDatabaseId: load('notionShiftsDatabaseId', null),
+    notionShiftsDatabaseUrl: load('notionShiftsDatabaseUrl', null),
     notionSyncBacklog: load('notionSyncBacklog', []), // List of log IDs that failed to sync to Notion
+    notionShiftSyncBacklog: load('notionShiftSyncBacklog', []), // List of shift definition IDs that need sync
   };
 
   function persist() {
@@ -84,7 +87,10 @@
     save('streaks', state.streaks);
     save('notionDatabaseId', state.notionDatabaseId);
     save('notionDatabaseUrl', state.notionDatabaseUrl);
+    save('notionShiftsDatabaseId', state.notionShiftsDatabaseId);
+    save('notionShiftsDatabaseUrl', state.notionShiftsDatabaseUrl);
     save('notionSyncBacklog', state.notionSyncBacklog);
+    save('notionShiftSyncBacklog', state.notionShiftSyncBacklog);
   }
 
   // ========================
@@ -597,6 +603,9 @@
       renderShiftsList();
       renderTodaySchedule();
       updateQuickStats();
+
+      // Sync shift template changes to Notion
+      syncNotionShift(shiftData);
     });
 
     // Close on overlay click
@@ -659,6 +668,9 @@
     persist();
     renderShiftsList();
     renderTodaySchedule();
+
+    // Delete shift template from Notion
+    syncNotionShift({ id }, true);
   }
 
   // ========================
@@ -666,18 +678,46 @@
   // ========================
   function clockIn(shift) {
     const now = new Date();
+    const logId = genId(); // Pre-generate log id
     state.session = {
+      logId: logId,
       shiftId: shift.id,
       shiftName: shift.name,
       category: shift.category,
       clockIn: now.toISOString(),
       lastCheckin: now.toISOString(),
+      notionPageId: null // Stores Notion page reference once synced
     };
     persist();
     renderClockTab();
     renderTodaySchedule();
     updateDutyCard(now);
     updateTopbarStatus(now);
+
+    // Create an in-progress draft log entry
+    const draftLog = {
+      id: logId,
+      shiftId: shift.id,
+      shiftName: shift.name,
+      category: shift.category,
+      date: getTodayStr(),
+      clockIn: now.toISOString(),
+      clockOut: null,
+      duration: 0,
+      notes: 'Active session...',
+      rating: 0,
+      status: 'in-progress'
+    };
+    
+    // Sync draft log to Notion
+    syncNotionLog(draftLog).then(success => {
+      if (success && state.session && state.session.logId === logId) {
+        // Find saved pageId from the synced log and store in active session
+        const syncedLog = state.logs.find(l => l.id === logId);
+        state.session.notionPageId = draftLog.notionPageId;
+        persist();
+      }
+    });
   }
 
   function clockOut(notes, rating) {
@@ -687,7 +727,7 @@
     const duration = now - clockInTime;
 
     const log = {
-      id: genId(),
+      id: state.session.logId || genId(),
       shiftId: state.session.shiftId,
       shiftName: state.session.shiftName,
       category: state.session.category,
@@ -698,6 +738,7 @@
       notes: notes || '',
       rating: rating || 0,
       status: 'completed',
+      notionPageId: state.session.notionPageId // Pass the draft page ID if synced
     };
 
     state.logs.push(log);
@@ -709,7 +750,7 @@
     updateDutyCard(now);
     updateQuickStats();
 
-    // Trigger async Notion sync
+    // Trigger async Notion sync (updates existing draft page or creates new if offline earlier)
     syncNotionLog(log);
   }
 
@@ -1194,42 +1235,53 @@
   async function syncNotionLog(log) {
     if (!state.notionDatabaseId) return false;
 
-    // Show sync indicator status as syncing
     const indicator = $('#notion-sync-indicator');
     if (indicator) {
       indicator.style.background = '#f59e0b';
-      indicator.setAttribute('title', 'Syncing to Notion...');
+      indicator.setAttribute('title', 'Syncing log to Notion...');
     }
 
     try {
+      const payload = {
+        type: 'log',
+        databaseId: state.notionDatabaseId,
+        log: log,
+        callsign: state.settings.name || 'Operator'
+      };
+
+      // Check if we have a saved Notion page ID from a clock-in draft
+      if (log.notionPageId) {
+        payload.pageId = log.notionPageId;
+      }
+
       const response = await fetch('/api/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          databaseId: state.notionDatabaseId,
-          log: log,
-          callsign: state.settings.name || 'Operator'
-        })
+        body: JSON.stringify(payload)
       });
 
       const res = await response.json();
       if (response.ok && res.success) {
-        // Successfully synced
+        // Save the pageId locally so we can update it later if needed
+        if (res.pageId && log.notionPageId !== res.pageId) {
+          log.notionPageId = res.pageId;
+          persist();
+        }
+        
         if (indicator) {
           indicator.style.background = '#00d4aa';
           indicator.setAttribute('title', 'Notion Synced');
         }
-        // Remove from backlog if it was there
         state.notionSyncBacklog = state.notionSyncBacklog.filter(id => id !== log.id);
         persist();
         return true;
       } else {
-        throw new Error(res.error || 'Failed to sync');
+        throw new Error(res.error || 'Failed to sync log');
       }
     } catch (e) {
-      console.warn('Notion Sync Failed, queued in backlog:', e);
+      console.warn('Notion Log Sync Failed, queued:', e);
       if (indicator) {
         indicator.style.background = '#ef4444';
         indicator.setAttribute('title', 'Sync Error: Queued');
@@ -1242,22 +1294,93 @@
     }
   }
 
+  async function syncNotionShift(shift, isDelete = false) {
+    if (!state.notionShiftsDatabaseId) return false;
+
+    const indicator = $('#notion-sync-indicator');
+    if (indicator) {
+      indicator.style.background = '#f59e0b';
+      indicator.setAttribute('title', 'Syncing shift to Notion...');
+    }
+
+    try {
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: isDelete ? 'delete-shift' : 'shift',
+          databaseId: state.notionShiftsDatabaseId,
+          shift: shift
+        })
+      });
+
+      const res = await response.json();
+      if (response.ok && res.success) {
+        if (indicator) {
+          indicator.style.background = '#00d4aa';
+          indicator.setAttribute('title', 'Notion Synced');
+        }
+        state.notionShiftSyncBacklog = state.notionShiftSyncBacklog.filter(id => id !== shift.id);
+        persist();
+        return true;
+      } else {
+        throw new Error(res.error || 'Failed to sync shift target');
+      }
+    } catch (e) {
+      console.warn('Notion Shift Sync Failed, queued:', e);
+      if (indicator) {
+        indicator.style.background = '#ef4444';
+        indicator.setAttribute('title', 'Sync Error: Queued');
+      }
+      if (!state.notionShiftSyncBacklog.includes(shift.id) && !isDelete) {
+        state.notionShiftSyncBacklog.push(shift.id);
+        persist();
+      }
+      return false;
+    }
+  }
+
   async function processSyncBacklog() {
-    if (!state.notionDatabaseId || state.notionSyncBacklog.length === 0) {
+    if (!state.notionDatabaseId) {
       updateNotionUI();
       return;
     }
 
-    const backlog = [...state.notionSyncBacklog];
-    for (const logId of backlog) {
-      const log = state.logs.find(l => l.id === logId);
-      if (log) {
-        const success = await syncNotionLog(log);
-        if (!success) break; // Network offline or rate limit, stop and retry later
-      } else {
-        // Log doesn't exist anymore, remove it
-        state.notionSyncBacklog = state.notionSyncBacklog.filter(id => id !== logId);
-        persist();
+    // Process shift templates backlog first
+    if (state.notionShiftsDatabaseId && state.notionShiftSyncBacklog.length > 0) {
+      const shiftBacklog = [...state.notionShiftSyncBacklog];
+      for (const id of shiftBacklog) {
+        const shift = state.shifts.find(s => s.id === id);
+        if (shift) {
+          const success = await syncNotionShift(shift);
+          if (!success) break;
+        } else {
+          // If deleted locally, trigger delete on Notion backend
+          const success = await syncNotionShift({ id }, true);
+          if (success) {
+            state.notionShiftSyncBacklog = state.notionShiftSyncBacklog.filter(x => x !== id);
+            persist();
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    // Process operations log backlog
+    if (state.notionSyncBacklog.length > 0) {
+      const logBacklog = [...state.notionSyncBacklog];
+      for (const logId of logBacklog) {
+        const log = state.logs.find(l => l.id === logId);
+        if (log) {
+          const success = await syncNotionLog(log);
+          if (!success) break;
+        } else {
+          state.notionSyncBacklog = state.notionSyncBacklog.filter(id => id !== logId);
+          persist();
+        }
       }
     }
     updateNotionUI();
@@ -1269,14 +1392,17 @@
     const initBtn = $('#btn-init-notion');
     const linkContainer = $('#notion-link-container');
     const dbUrl = $('#notion-db-url');
+    const shiftsDbUrl = $('#notion-shifts-db-url');
 
     if (!indicator) return;
 
+    const totalBacklog = state.notionSyncBacklog.length + state.notionShiftSyncBacklog.length;
+
     if (state.notionDatabaseId) {
-      if (state.notionSyncBacklog.length > 0) {
+      if (totalBacklog > 0) {
         indicator.style.background = '#ef4444';
-        indicator.setAttribute('title', `${state.notionSyncBacklog.length} shifts pending sync`);
-        if (statusText) statusText.textContent = `PENDING SYNC (${state.notionSyncBacklog.length})`;
+        indicator.setAttribute('title', `${totalBacklog} items pending sync`);
+        if (statusText) statusText.textContent = `PENDING SYNC (${totalBacklog})`;
       } else {
         indicator.style.background = '#00d4aa';
         indicator.setAttribute('title', 'Notion Connected & Synced');
@@ -1286,6 +1412,9 @@
       if (linkContainer) linkContainer.classList.remove('hidden');
       if (dbUrl && state.notionDatabaseUrl) {
         dbUrl.href = state.notionDatabaseUrl;
+      }
+      if (shiftsDbUrl && state.notionShiftsDatabaseUrl) {
+        shiftsDbUrl.href = state.notionShiftsDatabaseUrl;
       }
     } else {
       indicator.style.background = '#6b7280';
@@ -1305,14 +1434,17 @@
         if (!confirm('Unlink Notion Database? Stored data will not be deleted, but sync will stop.')) return;
         state.notionDatabaseId = null;
         state.notionDatabaseUrl = null;
+        state.notionShiftsDatabaseId = null;
+        state.notionShiftsDatabaseUrl = null;
         state.notionSyncBacklog = [];
+        state.notionShiftSyncBacklog = [];
         persist();
         updateNotionUI();
         return;
       }
 
       btn.disabled = true;
-      btn.textContent = 'CREATING NOTION DATABASE...';
+      btn.textContent = 'CREATING NOTION DATABASES...';
 
       try {
         const response = await fetch('/api/init-database', {
@@ -1321,17 +1453,20 @@
 
         const res = await response.json();
         if (response.ok && res.success) {
-          state.notionDatabaseId = res.databaseId;
-          state.notionDatabaseUrl = res.url;
+          state.notionDatabaseId = res.logsDatabaseId;
+          state.notionDatabaseUrl = res.logsDatabaseUrl;
+          state.notionShiftsDatabaseId = res.shiftsDatabaseId;
+          state.notionShiftsDatabaseUrl = res.shiftsDatabaseUrl;
           
-          // Add all existing logs to backlog so history is backfilled into Notion
+          // Load existing logs and shift definitions to backfill
           state.notionSyncBacklog = state.logs.map(l => l.id);
+          state.notionShiftSyncBacklog = state.shifts.map(s => s.id);
           persist();
           
-          alert('Notion Database constructed and connected successfully! Pushing existing history in background.');
+          alert('Notion Databases (Logs & Schedule Templates) created and linked successfully!');
           processSyncBacklog();
         } else {
-          alert(`Error initializing database: ${res.error || 'Unknown error'}`);
+          alert(`Error initializing databases: ${res.error || 'Unknown error'}`);
         }
       } catch (e) {
         alert(`Request failed: ${e.message}`);
