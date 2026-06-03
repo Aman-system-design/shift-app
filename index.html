@@ -457,6 +457,20 @@
       </div>
 
       <div class="card">
+        <div class="card-header"><span class="card-tag">ALARM SETTINGS</span></div>
+        <div class="form-group">
+          <label>ALERT TONE</label>
+          <select id="setting-alarm-tone" style="width:100%;background:var(--bg-body);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:10px;font-family:inherit;">
+            <option value="pulse">Chime Pulse (Pleasant but Urgent)</option>
+            <option value="echo">Echo Echo (Calm and Strategic)</option>
+            <option value="klaxon">Military Emergency (High Alert)</option>
+            <option value="none">No Sound (Silent Alert)</option>
+          </select>
+          <button class="btn btn-ghost btn-block" id="btn-test-alarm" style="font-size:12px;">TEST SOUND TONE</button>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-header"><span class="card-tag">NOTION DATABASE</span></div>
         <div class="form-group">
           <div class="toggle-row" style="margin-bottom: 12px;">

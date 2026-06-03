@@ -69,6 +69,7 @@
       sleepTime: '00:00',
       catDate: '2026-11-23',
       notifications: false,
+      alarmTone: 'pulse',
     }),
     streaks: load('streaks', { current: 0, best: 0, lastDate: null }),
     notionDatabaseId: load('notionDatabaseId', null),
@@ -527,8 +528,9 @@
     $('#awol-shift-name').textContent = activeShift.name;
     $('#awol-alert').classList.remove('hidden');
 
-    // Try notification
+    // Try notification & Play alarm synthesizer
     sendNotification('SHIFT ALERT', `You should be on shift: ${activeShift.name}. Clock in NOW.`);
+    playUrgentAlarm();
   }
 
   function initAWOL() {
@@ -544,6 +546,7 @@
       const activeShift = getActiveShift(now);
       if (activeShift) awolDismissed[activeShift.id] = getTodayStr();
       $('#awol-alert').classList.add('hidden');
+      stopAlarm();
     });
   }
 
@@ -708,6 +711,7 @@
     renderTodaySchedule();
     updateDutyCard(now);
     updateTopbarStatus(now);
+    stopAlarm();
 
     // Create an in-progress draft log entry
     const draftLog = {
@@ -1153,11 +1157,11 @@
   // ========================
   // SETTINGS
   // ========================
-  function loadSettings() {
     $('#setting-name').value = state.settings.name || '';
     $('#setting-wake').value = state.settings.wakeTime || '06:00';
     $('#setting-sleep').value = state.settings.sleepTime || '00:00';
     $('#setting-cat-date').value = state.settings.catDate || '2026-11-23';
+    $('#setting-alarm-tone').value = state.settings.alarmTone || 'pulse';
 
     const toggleBtn = $('#toggle-notifications');
     if (state.settings.notifications) {
@@ -1183,6 +1187,23 @@
         persist();
       });
     });
+
+    // Alarm tone select trigger
+    const toneSelect = $('#setting-alarm-tone');
+    if (toneSelect) {
+      toneSelect.addEventListener('change', () => {
+        state.settings.alarmTone = toneSelect.value;
+        persist();
+      });
+    }
+
+    // Alarm test button trigger
+    const testBtn = $('#btn-test-alarm');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => {
+        playUrgentAlarm(true); // Test alarm tone once
+      });
+    }
 
     // Notifications toggle
     $('#toggle-notifications').addEventListener('click', async () => {
@@ -1354,6 +1375,132 @@
         persist();
       }
       return false;
+    }
+  // ========================
+  // WEB AUDIO SYNTHESIZED ALARMS
+  // ========================
+  let audioCtx = null;
+  let alarmInterval = null;
+
+  function playUrgentAlarm(isTest = false) {
+    const tone = state.settings.alarmTone || 'pulse';
+    if (tone === 'none') return;
+
+    // Initialize Audio Context on user gesture
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    // Stop existing alarms
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+
+    const duration = isTest ? 1500 : 10000; // Limit tests to 1.5s, active alerts to 10s
+
+    if (tone === 'pulse') {
+      // Pleasant yet Urgent: Double high-pitch sweet chime pulses
+      let startTime = audioCtx.currentTime;
+      const playPulse = (time, freq, length) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.type = 'triangle'; // Softer, rounder sound
+        osc.frequency.setValueAtTime(freq, time);
+        
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.15, time + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + length);
+
+        osc.start(time);
+        osc.stop(time + length);
+      };
+
+      // Play double chime pattern repeating
+      let offset = 0;
+      alarmInterval = setInterval(() => {
+        const t = audioCtx.currentTime;
+        playPulse(t, 880, 0.4); // A5 Chime
+        playPulse(t + 0.15, 1046.5, 0.5); // C6 Chime
+        offset += 1200;
+        if (offset >= duration) clearInterval(alarmInterval);
+      }, 1200);
+      
+      // Trigger first run immediately
+      playPulse(audioCtx.currentTime, 880, 0.4);
+      playPulse(audioCtx.currentTime + 0.15, 1046.5, 0.5);
+
+    } else if (tone === 'echo') {
+      // Calm and Strategic: Deep ambient sonar echos
+      let startTime = audioCtx.currentTime;
+      const playEcho = (time, freq) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        // Frequency sweep echo
+        osc.frequency.exponentialRampToValueAtTime(freq / 2, time + 1.2);
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(0.2, time + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 1.5);
+
+        osc.start(time);
+        osc.stop(time + 1.5);
+      };
+
+      let offset = 0;
+      alarmInterval = setInterval(() => {
+        playEcho(audioCtx.currentTime, 440);
+        offset += 2000;
+        if (offset >= duration) clearInterval(alarmInterval);
+      }, 2000);
+      playEcho(audioCtx.currentTime, 440);
+
+    } else if (tone === 'klaxon') {
+      // High Alert: Emergency modulation siren
+      let offset = 0;
+      const playSiren = () => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.4);
+        osc.frequency.linearRampToValueAtTime(300, audioCtx.currentTime + 0.8);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.8);
+      };
+
+      alarmInterval = setInterval(() => {
+        playSiren();
+        offset += 1000;
+        if (offset >= duration) clearInterval(alarmInterval);
+      }, 1000);
+      playSiren();
+    }
+  }
+
+  function stopAlarm() {
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
     }
   }
 
