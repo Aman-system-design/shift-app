@@ -1393,6 +1393,7 @@
     const linkContainer = $('#notion-link-container');
     const dbUrl = $('#notion-db-url');
     const shiftsDbUrl = $('#notion-shifts-db-url');
+    const pullBtn = $('#btn-pull-notion');
 
     if (!indicator) return;
 
@@ -1416,17 +1417,89 @@
       if (shiftsDbUrl && state.notionShiftsDatabaseUrl) {
         shiftsDbUrl.href = state.notionShiftsDatabaseUrl;
       }
+      if (pullBtn) pullBtn.classList.remove('hidden');
     } else {
       indicator.style.background = '#6b7280';
       indicator.setAttribute('title', 'Notion Unlinked');
       if (statusText) statusText.textContent = 'UNLINKED';
       if (initBtn) initBtn.textContent = 'LINK NOTION DATABASE';
       if (linkContainer) linkContainer.classList.add('hidden');
+      if (pullBtn) pullBtn.classList.add('hidden');
+    }
+  }
+
+  async function pullNotionShifts() {
+    if (!state.notionShiftsDatabaseId) return;
+    const pullBtn = $('#btn-pull-notion');
+    if (pullBtn) {
+      pullBtn.disabled = true;
+      pullBtn.textContent = 'PULLING...';
+    }
+
+    try {
+      const response = await fetch('/api/pull-shifts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          databaseId: state.notionShiftsDatabaseId
+        })
+      });
+
+      const res = await response.json();
+      if (response.ok && res.success) {
+        // Merge downloaded shifts into local state shifts
+        const incomingShifts = res.shifts || [];
+        
+        if (incomingShifts.length === 0) {
+          alert('No shift targets found in Notion database.');
+          return;
+        }
+
+        // Loop through and update or insert
+        incomingShifts.forEach(incoming => {
+          const idx = state.shifts.findIndex(s => s.id === incoming.id);
+          if (idx >= 0) {
+            state.shifts[idx] = incoming;
+          } else {
+            state.shifts.push(incoming);
+          }
+        });
+
+        // Also clean up any shifts locally that are no longer in Notion database
+        const incomingIds = incomingShifts.map(s => s.id);
+        state.shifts = state.shifts.filter(localShift => {
+          // Keep if it matches an incoming ID, or if we haven't synced it yet (it's not in Notion at all)
+          return incomingIds.includes(localShift.id) || state.notionShiftSyncBacklog.includes(localShift.id);
+        });
+
+        persist();
+        renderShiftsList();
+        renderTodaySchedule();
+        updateQuickStats();
+        alert(`Successfully synced ${incomingShifts.length} shifts from Notion!`);
+      } else {
+        alert(`Failed to pull shifts: ${res.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      alert(`Network error pulling shifts: ${e.message}`);
+    } finally {
+      if (pullBtn) {
+        pullBtn.disabled = false;
+        pullBtn.textContent = '↓ PULL NOTION';
+      }
     }
   }
 
   function initNotionEvents() {
     const btn = $('#btn-init-notion');
+    const pullBtn = $('#btn-pull-notion');
+    
+    if (pullBtn) {
+      pullBtn.addEventListener('click', pullNotionShifts);
+    }
+
     if (!btn) return;
 
     btn.addEventListener('click', async () => {

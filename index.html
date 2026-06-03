@@ -184,9 +184,12 @@
 
     <!-- ====== SHIFTS TAB ====== -->
     <section class="tab-panel" id="panel-shifts">
-      <div class="section-header">
+      <div class="section-header" style="flex-wrap: wrap; gap: 10px;">
         <h2>SHIFT ROSTER</h2>
-        <button class="btn btn-accent" id="btn-add-shift">+ NEW SHIFT</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-ghost btn-sm hidden" id="btn-pull-notion" style="font-size:11px;font-family:var(--font-mono);border:1px solid var(--border);padding:6px 12px;">↓ PULL NOTION</button>
+          <button class="btn btn-accent" id="btn-add-shift">+ NEW SHIFT</button>
+        </div>
       </div>
 
       <!-- Shift Form Modal -->
