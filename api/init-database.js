@@ -100,12 +100,38 @@ export default async function handler(req, res) {
       return res.status(shiftDbResponse.status).json({ error: shiftDbData.message || 'Failed to create Shifts database' });
     }
 
+    // 3. Create SHIFT Devices (Push Subscriptions) database
+    const subDbResponse = await fetch('https://api.notion.com/v1/databases', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        parent: { type: 'page_id', page_id: parentPageId },
+        title: [{ type: 'text', text: { content: 'SHIFT Devices (Push Subscriptions)' } }],
+        properties: {
+          'Device Name': { title: {} },
+          'Subscription JSON': { rich_text: {} }, // Stores raw browser push subscription details
+          'Callsign': { rich_text: {} }
+        }
+      })
+    });
+
+    const subDbData = await subDbResponse.json();
+    if (!subDbResponse.ok) {
+      return res.status(subDbResponse.status).json({ error: subDbData.message || 'Failed to create Subscriptions database' });
+    }
+
     return res.status(200).json({
       success: true,
       logsDatabaseId: logDbData.id,
       logsDatabaseUrl: logDbData.url,
       shiftsDatabaseId: shiftDbData.id,
-      shiftsDatabaseUrl: shiftDbData.url
+      shiftsDatabaseUrl: shiftDbData.url,
+      subDatabaseId: subDbData.id,
+      subDatabaseUrl: subDbData.url
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

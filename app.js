@@ -76,6 +76,8 @@
     notionDatabaseUrl: load('notionDatabaseUrl', null),
     notionShiftsDatabaseId: load('notionShiftsDatabaseId', null),
     notionShiftsDatabaseUrl: load('notionShiftsDatabaseUrl', null),
+    notionSubDatabaseId: load('notionSubDatabaseId', null),
+    notionSubDatabaseUrl: load('notionSubDatabaseUrl', null),
     notionSyncBacklog: load('notionSyncBacklog', []), // List of log IDs that failed to sync to Notion
     notionShiftSyncBacklog: load('notionShiftSyncBacklog', []), // List of shift definition IDs that need sync
   };
@@ -90,6 +92,8 @@
     save('notionDatabaseUrl', state.notionDatabaseUrl);
     save('notionShiftsDatabaseId', state.notionShiftsDatabaseId);
     save('notionShiftsDatabaseUrl', state.notionShiftsDatabaseUrl);
+    save('notionSubDatabaseId', state.notionSubDatabaseId);
+    save('notionSubDatabaseUrl', state.notionSubDatabaseUrl);
     save('notionSyncBacklog', state.notionSyncBacklog);
     save('notionShiftSyncBacklog', state.notionShiftSyncBacklog);
   }
@@ -1706,13 +1710,14 @@
 
     if (!btn) return;
 
-    btn.addEventListener('click', async () => {
       if (state.notionDatabaseId) {
         if (!confirm('Unlink Notion Database? Stored data will not be deleted, but sync will stop.')) return;
         state.notionDatabaseId = null;
         state.notionDatabaseUrl = null;
         state.notionShiftsDatabaseId = null;
         state.notionShiftsDatabaseUrl = null;
+        state.notionSubDatabaseId = null;
+        state.notionSubDatabaseUrl = null;
         state.notionSyncBacklog = [];
         state.notionShiftSyncBacklog = [];
         persist();
@@ -1734,14 +1739,19 @@
           state.notionDatabaseUrl = res.logsDatabaseUrl;
           state.notionShiftsDatabaseId = res.shiftsDatabaseId;
           state.notionShiftsDatabaseUrl = res.shiftsDatabaseUrl;
+          state.notionSubDatabaseId = res.subDatabaseId;
+          state.notionSubDatabaseUrl = res.subDatabaseUrl;
           
           // Load existing logs and shift definitions to backfill
           state.notionSyncBacklog = state.logs.map(l => l.id);
           state.notionShiftSyncBacklog = state.shifts.map(s => s.id);
           persist();
           
-          alert('Notion Databases (Logs & Schedule Templates) created and linked successfully!');
+          alert('Notion Databases (Logs, Targets & Devices) created and linked successfully!');
           processSyncBacklog();
+          
+          // Request Web Push registration immediately after linking Notion
+          requestPushSubscription();
         } else {
           alert(`Error initializing databases: ${res.error || 'Unknown error'}`);
         }
@@ -1788,6 +1798,21 @@
         new Notification(title, { body, vibrate: [200, 100, 200] });
       } catch (e) { /* ignore */ }
     }
+
+    // Trigger background Web Push for all registered devices
+    if (state.notionSubDatabaseId) {
+      fetch('/api/trigger-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subDatabaseId: state.notionSubDatabaseId,
+          title: title,
+          body: body
+        })
+      }).catch(err => console.error('Failed to trigger background push notification:', err));
+    }
   }
 
   // ========================
@@ -1803,11 +1828,74 @@
   }
 
   // ========================
-  // SERVICE WORKER
+  // SERVICE WORKER & WEB PUSH
   // ========================
   function registerSW() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => {
+          // If Notion is linked, attempt push subscription registration
+          if (state.notionSubDatabaseId) {
+            requestPushSubscription(reg);
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function requestPushSubscription(registration = null) {
+    if (!state.notionSubDatabaseId) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('Push messaging is not supported in this browser.');
+      return;
+    }
+
+    try {
+      const reg = registration || await navigator.serviceWorker.ready;
+      
+      // Request permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const vapidPublicKey = 'BNcSdR4DbQoLVsMJCDZH7NsetvTCf8J2-kcLMCOCCBfNDUFKGFohbQrYSNqv_oFhVoLFhb2IVcRN8za-Z2mw-6g';
+      const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      });
+
+      // Send the subscription payload to Notion Device register endpoint
+      const devName = navigator.userAgent.includes('Mobile') ? 'Mobile PWA' : 'Desktop PWA';
+      await fetch('/api/register-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          databaseId: state.notionSubDatabaseId,
+          subscription: subscription,
+          deviceName: `${devName} (${navigator.platform || 'Unknown OS'})`,
+          callsign: state.settings.name || 'Operator'
+        })
+      });
+      
+      console.log('Background push registration completed successfully.');
+    } catch (err) {
+      console.warn('Failed to subscribe browser to Web Push:', err);
     }
   }
 

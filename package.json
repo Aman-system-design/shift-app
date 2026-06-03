@@ -1,0 +1,12 @@
+{
+  "name": "shift-app",
+  "version": "1.0.0",
+  "description": "Military-grade accountability. Clock in to your goals like work shifts.",
+  "main": "app.js",
+  "scripts": {
+    "dev": "http-server"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

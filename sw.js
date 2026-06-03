@@ -50,7 +50,15 @@ self.addEventListener('fetch', e => {
 
 // Push notification handler
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : { title: 'SHIFT', body: 'You have an active shift.' };
+  let data = { title: 'SHIFT', body: 'Report for duty!' };
+  if (e.data) {
+    try {
+      data = e.data.json();
+    } catch (err) {
+      data = { title: 'SHIFT ALERT', body: e.data.text() };
+    }
+  }
+
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
