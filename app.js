@@ -1473,8 +1473,14 @@
         // Also clean up any shifts locally that are no longer in Notion database
         const incomingIds = incomingShifts.map(s => s.id);
         state.shifts = state.shifts.filter(localShift => {
-          // Keep if it matches an incoming ID, or if we haven't synced it yet (it's not in Notion at all)
-          return incomingIds.includes(localShift.id) || state.notionShiftSyncBacklog.includes(localShift.id);
+          // If this shift is pending delete sync, don't restore it!
+          const isPendingDelete = state.notionShiftSyncBacklog.includes(localShift.id);
+          if (isPendingDelete) return false;
+
+          // Keep if it matches an incoming ID, or if we haven't synced it to Notion yet
+          const inIncoming = incomingIds.includes(localShift.id);
+          const hasNotSyncedToNotionYet = !localShift.id.includes('-') && !localShift.id.startsWith('ntn_'); // Notion page IDs always contain hyphens
+          return inIncoming || hasNotSyncedToNotionYet;
         });
 
         persist();
