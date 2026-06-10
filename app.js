@@ -382,14 +382,23 @@
   // ========================
   function getTodayShifts() {
     const today = new Date().getDay();
-    return state.shifts.filter(s => s.days && s.days.includes(today));
+    const todayStr = getTodayStr();
+    return state.shifts.filter(s => {
+      if (s.date) return s.date === todayStr;
+      return s.days && s.days.includes(today);
+    });
   }
 
   function getActiveShift(now) {
     const today = now.getDay();
+    const todayStr = getTodayStr();
     const nowMin = now.getHours() * 60 + now.getMinutes();
     return state.shifts.find(s => {
-      if (!s.days || !s.days.includes(today)) return false;
+      if (s.date) {
+        if (s.date !== todayStr) return false;
+      } else {
+        if (!s.days || !s.days.includes(today)) return false;
+      }
       const start = toMinutes(s.startTime);
       const end = toMinutes(s.endTime);
       if (end > start) return nowMin >= start && nowMin < end;
@@ -401,7 +410,11 @@
   function getShiftStatus(shift, now) {
     const todayStr = getTodayStr();
     const today = now.getDay();
-    if (!shift.days || !shift.days.includes(today)) return 'inactive';
+    if (shift.date) {
+      if (shift.date !== todayStr) return 'inactive';
+    } else {
+      if (!shift.days || !shift.days.includes(today)) return 'inactive';
+    }
 
     const nowMin = now.getHours() * 60 + now.getMinutes();
     const start = toMinutes(shift.startTime);
@@ -667,7 +680,7 @@
 
     container.innerHTML = state.shifts.map(shift => {
       const color = catColor(shift.category);
-      const dayLabels = (shift.days || []).sort().map(d => DAYS_SHORT[d]).join(' · ');
+      const dayLabels = shift.date ? `DATE: ${shift.date}` : (shift.days || []).sort().map(d => DAYS_SHORT[d]).join(' · ');
       return `
         <div class="shift-card" data-id="${shift.id}">
           <div class="shift-cat-bar" style="background:${color}"></div>
@@ -854,7 +867,10 @@
     const now = new Date();
     const today = now.getDay();
     const todayStr = getTodayStr();
-    const todayShifts = state.shifts.filter(s => s.days && s.days.includes(today));
+    const todayShifts = state.shifts.filter(s => {
+      if (s.date) return s.date === todayStr;
+      return s.days && s.days.includes(today);
+    });
 
     if (todayShifts.length === 0) {
       container.innerHTML = '<div class="empty-state">No shifts scheduled for today.</div>';
@@ -960,7 +976,11 @@
     const nowMin = now.getHours() * 60 + now.getMinutes();
 
     state.shifts.forEach(shift => {
-      if (!shift.days || !shift.days.includes(today)) return;
+      if (shift.date) {
+        if (shift.date !== todayStr) return;
+      } else {
+        if (!shift.days || !shift.days.includes(today)) return;
+      }
 
       const endMin = toMinutes(shift.endTime);
       const startMin = toMinutes(shift.startTime);
@@ -2730,7 +2750,11 @@
     const todayStr = getTodayStr();
 
     state.shifts.forEach(shift => {
-      if (!shift.days || !shift.days.includes(today)) return;
+      if (shift.date) {
+        if (shift.date !== todayStr) return;
+      } else {
+        if (!shift.days || !shift.days.includes(today)) return;
+      }
       const startMin = toMinutes(shift.startTime);
 
       // Notify at shift start

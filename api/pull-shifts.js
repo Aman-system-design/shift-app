@@ -36,27 +36,56 @@ export default async function handler(req, res) {
     const shifts = data.results.map(page => {
       const props = page.properties;
       
-      const name = props['Shift Name']?.title?.[0]?.plain_text || 'Unnamed Target';
-      const category = props['Category']?.select?.name || 'Custom';
-      const startTime = props['Start Time']?.rich_text?.[0]?.plain_text || '00:00';
-      const endTime = props['End Time']?.rich_text?.[0]?.plain_text || '00:00';
+      // Check if it's HCL shifts layout
+      const isHclLayout = ('Visual Schedule' in props) || ('Shift Type' in props);
       
-      const daysText = props['Days Active']?.rich_text?.[0]?.plain_text || '';
-      const days = daysText.split(',')
-        .map(d => d.trim().toUpperCase())
-        .filter(d => d in DAYS_MAP)
-        .map(d => DAYS_MAP[d]);
-      
-      const id = props['LocalShiftId']?.rich_text?.[0]?.plain_text || page.id;
-
-      return {
-        id,
-        name,
-        category,
-        startTime,
-        endTime,
-        days
-      };
+      if (isHclLayout) {
+        const name = props['Name']?.title?.[0]?.plain_text || 'HCL Shift';
+        const category = props['Shift Type']?.select?.name || 'Custom';
+        const date = props['Date']?.date?.start || null;
+        
+        let startTime = '00:00';
+        let endTime = '00:00';
+        const visualSchedule = props['Visual Schedule']?.formula?.string || '';
+        const timeMatch = visualSchedule.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+        if (timeMatch) {
+          startTime = timeMatch[1];
+          endTime = timeMatch[2];
+        }
+        
+        return {
+          id: page.id,
+          name,
+          category,
+          startTime,
+          endTime,
+          date,
+          days: date ? [new Date(date).getDay()] : []
+        };
+      } else {
+        // Standard template layout
+        const name = props['Shift Name']?.title?.[0]?.plain_text || 'Unnamed Target';
+        const category = props['Category']?.select?.name || 'Custom';
+        const startTime = props['Start Time']?.rich_text?.[0]?.plain_text || '00:00';
+        const endTime = props['End Time']?.rich_text?.[0]?.plain_text || '00:00';
+        
+        const daysText = props['Days Active']?.rich_text?.[0]?.plain_text || '';
+        const days = daysText.split(',')
+          .map(d => d.trim().toUpperCase())
+          .filter(d => d in DAYS_MAP)
+          .map(d => DAYS_MAP[d]);
+        
+        const id = props['LocalShiftId']?.rich_text?.[0]?.plain_text || page.id;
+        
+        return {
+          id,
+          name,
+          category,
+          startTime,
+          endTime,
+          days
+        };
+      }
     });
 
     return res.status(200).json({ success: true, shifts });
