@@ -110,7 +110,7 @@ export default async function handler(req, res) {
     // UPDATE TASK
     // ==========================================
     if (req.method === 'POST' && req.body.type === 'update') {
-      const { id, completed, name, slot, parentTaskId, goalId } = req.body;
+      const { id, completed, name, slot, parentTaskId, goalId, archived } = req.body;
       if (!id) {
         return res.status(400).json({ error: 'Missing task page ID.' });
       }
@@ -133,6 +133,11 @@ export default async function handler(req, res) {
         properties['Goal'] = goalId ? { relation: [{ id: goalId }] } : { relation: [] };
       }
 
+      const requestBody = { properties };
+      if (archived !== undefined) {
+        requestBody.archived = archived;
+      }
+
       const response = await fetch(`https://api.notion.com/v1/pages/${id}`, {
         method: 'PATCH',
         headers: {
@@ -140,9 +145,7 @@ export default async function handler(req, res) {
           'Notion-Version': '2022-06-28',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          properties
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();

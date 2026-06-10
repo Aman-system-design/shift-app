@@ -170,7 +170,11 @@
           <p id="next-task-meta" style="font-size: 11px; font-family:var(--font-mono); color:var(--text-tertiary); margin:0;">Goal: None</p>
         </div>
         <div class="next-task-actions" id="next-task-actions" style="margin-top: 14px; display: none;">
-          <button class="btn btn-accent btn-sm" id="btn-complete-next" style="width:100%;">COMPLETE THIS TASK</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-accent btn-sm" id="btn-complete-next" style="flex:1;">COMPLETE TASK</button>
+            <button class="btn btn-ghost btn-sm" id="btn-edit-next" style="padding:6px 12px; font-size:12px;">✏️</button>
+            <button class="btn btn-ghost btn-sm" id="btn-delete-next" style="padding:6px 12px; font-size:12px; color:#ef4444; border-color:rgba(239,68,68,0.2);">🗑️</button>
+          </div>
         </div>
       </div>
 

@@ -1919,9 +1919,44 @@
       content.appendChild(name);
       content.appendChild(meta);
 
+      // Actions (Edit/Delete)
+      const actions = document.createElement('div');
+      actions.className = 'task-actions-wrapper';
+      actions.style.display = 'flex';
+      actions.style.gap = '8px';
+      actions.style.marginLeft = 'auto';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-task-action btn-task-edit';
+      editBtn.textContent = '✏️';
+      editBtn.style.background = 'none';
+      editBtn.style.border = 'none';
+      editBtn.style.cursor = 'pointer';
+      editBtn.style.fontSize = '12px';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editTaskName(task.id);
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn-task-action btn-task-delete';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.style.background = 'none';
+      deleteBtn.style.border = 'none';
+      deleteBtn.style.cursor = 'pointer';
+      deleteBtn.style.fontSize = '12px';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteTask(task.id);
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+
       item.appendChild(handle);
       item.appendChild(checkWrapper);
       item.appendChild(content);
+      item.appendChild(actions);
 
       // HTML5 Drag-and-Drop Handlers
       item.addEventListener('dragstart', (e) => {
@@ -1948,6 +1983,63 @@
 
       taskList.appendChild(item);
     });
+  }
+
+  async function editTaskName(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newName = prompt('Edit task name:', task.name);
+    if (newName === null) return;
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+
+    task.name = trimmed;
+    persist();
+    renderTasks();
+
+    if (task.id && !task.id.startsWith('local_')) {
+      try {
+        await fetch('/api/sync-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'update',
+            id: task.id,
+            name: trimmed
+          })
+        });
+      } catch (e) {
+        console.warn('Failed to sync task name edit to Notion:', e);
+      }
+    }
+  }
+
+  async function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+
+    const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) return;
+
+    const [deletedTask] = state.tasks.splice(taskIndex, 1);
+    persist();
+    renderTasks();
+
+    if (deletedTask.id && !deletedTask.id.startsWith('local_')) {
+      try {
+        await fetch('/api/sync-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'update',
+            id: deletedTask.id,
+            archived: true
+          })
+        });
+      } catch (e) {
+        console.warn('Failed to archive task in Notion:', e);
+      }
+    }
   }
 
   async function toggleTaskComplete(taskId) {
@@ -2106,6 +2198,26 @@
         const activeTasks = state.tasks.filter(t => !t.completed);
         if (activeTasks.length > 0) {
           toggleTaskComplete(activeTasks[0].id);
+        }
+      });
+    }
+
+    const editNextBtn = $('#btn-edit-next');
+    if (editNextBtn) {
+      editNextBtn.addEventListener('click', () => {
+        const activeTasks = state.tasks.filter(t => !t.completed);
+        if (activeTasks.length > 0) {
+          editTaskName(activeTasks[0].id);
+        }
+      });
+    }
+
+    const deleteNextBtn = $('#btn-delete-next');
+    if (deleteNextBtn) {
+      deleteNextBtn.addEventListener('click', () => {
+        const activeTasks = state.tasks.filter(t => !t.completed);
+        if (activeTasks.length > 0) {
+          deleteTask(activeTasks[0].id);
         }
       });
     }
