@@ -80,6 +80,7 @@
     notionSubDatabaseUrl: load('notionSubDatabaseUrl', null),
     notionSyncBacklog: load('notionSyncBacklog', []), // List of log IDs that failed to sync to Notion
     notionShiftSyncBacklog: load('notionShiftSyncBacklog', []), // List of shift definition IDs that need sync
+    chatHistory: load('chatHistory', []),
   };
 
   function persist() {
@@ -96,6 +97,7 @@
     save('notionSubDatabaseUrl', state.notionSubDatabaseUrl);
     save('notionSyncBacklog', state.notionSyncBacklog);
     save('notionShiftSyncBacklog', state.notionShiftSyncBacklog);
+    save('chatHistory', state.chatHistory);
   }
 
   // ========================
@@ -174,6 +176,7 @@
         if (tab.dataset.tab === 'shifts') renderShiftsList();
         if (tab.dataset.tab === 'clock') renderClockTab();
         if (tab.dataset.tab === 'stats') renderStats();
+        if (tab.dataset.tab === 'guide') renderChat();
         if (tab.dataset.tab === 'settings') loadSettings();
       });
     });
@@ -1700,6 +1703,138 @@
     }
   }
 
+  // ========================
+  // CHAT & AI PERSONA
+  // ========================
+  function renderChat() {
+    const chatMessages = $('#chat-messages');
+    if (!chatMessages) return;
+
+    chatMessages.innerHTML = '';
+
+    if (state.chatHistory.length === 0) {
+      // Initialize with default Sita Ramji command/greeting
+      state.chatHistory.push({
+        role: 'assistant',
+        content: 'Open the book. Start now. Tell me what you are working on.',
+        timestamp: Date.now()
+      });
+      persist();
+    }
+
+    state.chatHistory.forEach(msg => {
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${msg.role === 'assistant' ? 'guide-bubble' : 'user-bubble'}`;
+      
+      const sender = document.createElement('span');
+      sender.className = 'chat-sender';
+      sender.textContent = msg.role === 'assistant' ? 'Sita Ramji' : (state.settings.name || 'Operator');
+      
+      const text = document.createElement('p');
+      text.className = 'chat-text';
+      text.textContent = msg.content;
+
+      bubble.appendChild(sender);
+      bubble.appendChild(text);
+      chatMessages.appendChild(bubble);
+    });
+
+    // Scroll to bottom
+    const container = $('.card-chat-container');
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  function initChatEvents() {
+    const sendBtn = $('#btn-chat-send');
+    const chatInput = $('#chat-input');
+    if (!sendBtn || !chatInput) return;
+
+    const sendMessage = async () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      // Add user message
+      state.chatHistory.push({
+        role: 'user',
+        content: text,
+        timestamp: Date.now()
+      });
+      persist();
+      renderChat();
+      chatInput.value = '';
+
+      // Disable inputs during API call
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+
+      // Show thinking bubble
+      const chatMessages = $('#chat-messages');
+      const thinkingBubble = document.createElement('div');
+      thinkingBubble.className = 'chat-bubble guide-bubble thinking-bubble';
+      thinkingBubble.innerHTML = '<span class="chat-sender">Sita Ramji</span><p class="chat-text">...</p>';
+      chatMessages.appendChild(thinkingBubble);
+      
+      const container = $('.card-chat-container');
+      if (container) container.scrollTop = container.scrollHeight;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: state.chatHistory,
+            userContext: {
+              name: state.settings.name || 'Operator'
+            }
+          })
+        });
+
+        const res = await response.json();
+        
+        // Remove thinking bubble
+        const thinking = $('.thinking-bubble');
+        if (thinking) thinking.remove();
+
+        if (response.ok && res.reply) {
+          state.chatHistory.push({
+            role: 'assistant',
+            content: res.reply,
+            timestamp: Date.now()
+          });
+          persist();
+        } else {
+          state.chatHistory.push({
+            role: 'assistant',
+            content: `Error: ${res.error || 'Failed to get response.'}`,
+            timestamp: Date.now()
+          });
+        }
+      } catch (e) {
+        const thinking = $('.thinking-bubble');
+        if (thinking) thinking.remove();
+        state.chatHistory.push({
+          role: 'assistant',
+          content: `Connection failed: ${e.message}`,
+          timestamp: Date.now()
+        });
+      } finally {
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+        renderChat();
+        chatInput.focus();
+      }
+    };
+
+    sendBtn.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  }
+
   function initNotionEvents() {
     const btn = $('#btn-init-notion');
     const pullBtn = $('#btn-pull-notion');
@@ -2042,6 +2177,7 @@
     initNav();
     initShiftForm();
     initClockEvents();
+    initChatEvents();
     initSettings();
     initAWOL();
     loadSettings();

@@ -1634,6 +1634,99 @@ body::after {
   }
 }
 
+/* ====== CHAT & GUIDE TAB ====== */
+.card-chat-container {
+  height: 400px;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: rgba(10, 10, 15, 0.6);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  animation: fadeInChat 0.25s ease-out;
+}
+
+@keyframes fadeInChat {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.guide-bubble {
+  align-self: flex-start;
+  background: rgba(167, 139, 250, 0.08);
+  border-left: 3px solid var(--accent);
+  border-top: 1px solid rgba(167, 139, 250, 0.15);
+  border-right: 1px solid rgba(167, 139, 250, 0.15);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.15);
+}
+
+.user-bubble {
+  align-self: flex-end;
+  background: rgba(0, 212, 170, 0.08);
+  border-right: 3px solid #00d4aa;
+  border-top: 1px solid rgba(0, 212, 170, 0.15);
+  border-left: 1px solid rgba(0, 212, 170, 0.15);
+  border-bottom: 1px solid rgba(0, 212, 170, 0.15);
+}
+
+.chat-sender {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.chat-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chat-input-row input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 14px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input-row input:focus {
+  border-color: var(--accent);
+}
+
 /* ---- PRINT — hide nav ---- */
 @media print {
   .topbar, .nav-tabs { display: none; }
