@@ -283,16 +283,23 @@
   // CAT COUNTDOWN
   // ========================
   function updateCATCountdown(now) {
+    const daysEl = $('#cat-days');
+    const hoursEl = $('#cat-hours');
+    const minsEl = $('#cat-mins');
+    const secsEl = $('#cat-secs');
+    const urgencyEl = $('#cat-urgency');
+    if (!daysEl || !hoursEl || !minsEl || !secsEl || !urgencyEl) return;
+
     const catDateStr = state.settings.catDate || '2026-11-23';
     const catDate = new Date(catDateStr + 'T09:00:00');
     const diff = catDate - now;
 
     if (diff <= 0) {
-      $('#cat-days').textContent = '0';
-      $('#cat-hours').textContent = '00';
-      $('#cat-mins').textContent = '00';
-      $('#cat-secs').textContent = '00';
-      $('#cat-urgency').textContent = 'EXAM DAY';
+      daysEl.textContent = '0';
+      hoursEl.textContent = '00';
+      minsEl.textContent = '00';
+      secsEl.textContent = '00';
+      urgencyEl.textContent = 'EXAM DAY';
       return;
     }
 
@@ -301,23 +308,23 @@
     const mins = Math.floor((diff % 3600000) / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
 
-    $('#cat-days').textContent = days;
-    $('#cat-hours').textContent = pad(hours);
-    $('#cat-mins').textContent = pad(mins);
-    $('#cat-secs').textContent = pad(secs);
+    daysEl.textContent = days;
+    hoursEl.textContent = pad(hours);
+    minsEl.textContent = pad(mins);
+    secsEl.textContent = pad(secs);
 
     if (days < 30) {
-      $('#cat-urgency').textContent = 'CRITICAL';
-      $('#cat-urgency').className = 'card-tag tag-danger';
+      urgencyEl.textContent = 'CRITICAL';
+      urgencyEl.className = 'card-tag tag-danger';
     } else if (days < 90) {
-      $('#cat-urgency').textContent = 'URGENT';
-      $('#cat-urgency').className = 'card-tag tag-danger';
+      urgencyEl.textContent = 'URGENT';
+      urgencyEl.className = 'card-tag tag-danger';
     } else if (days < 180) {
-      $('#cat-urgency').textContent = 'APPROACHING';
-      $('#cat-urgency').className = 'card-tag tag-urgent';
+      urgencyEl.textContent = 'APPROACHING';
+      urgencyEl.className = 'card-tag tag-urgent';
     } else {
-      $('#cat-urgency').textContent = days + ' DAYS';
-      $('#cat-urgency').className = 'card-tag tag-urgent';
+      urgencyEl.textContent = days + ' DAYS';
+      urgencyEl.className = 'card-tag tag-urgent';
     }
   }
 
@@ -528,12 +535,15 @@
   let awolDismissed = {};
 
   function checkAWOL() {
+    const awolAlert = $('#awol-alert');
+    if (!awolAlert) return;
+
     if (state.session) return; // Already clocked in
 
     const now = new Date();
     const activeShift = getActiveShift(now);
     if (!activeShift) {
-      $('#awol-alert').classList.add('hidden');
+      awolAlert.classList.add('hidden');
       return;
     }
 
@@ -541,7 +551,7 @@
     const todayStr = getTodayStr();
     const log = state.logs.find(l => l.shiftId === activeShift.id && l.date === todayStr);
     if (log) {
-      $('#awol-alert').classList.add('hidden');
+      awolAlert.classList.add('hidden');
       return;
     }
 
@@ -549,8 +559,9 @@
     if (awolDismissed[activeShift.id] === todayStr) return;
 
     // Show alert
-    $('#awol-shift-name').textContent = activeShift.name;
-    $('#awol-alert').classList.remove('hidden');
+    const nameEl = $('#awol-shift-name');
+    if (nameEl) nameEl.textContent = activeShift.name;
+    awolAlert.classList.remove('hidden');
 
     // Try notification & Play alarm synthesizer
     sendNotification('SHIFT ALERT', `You should be on shift: ${activeShift.name}. Clock in NOW.`);
@@ -802,20 +813,27 @@
     const activeSession = $('#clock-active-session');
     const sessionCard = $('#session-card');
 
+    if (!noSession || !activeSession || !sessionCard) return;
+
     if (state.session) {
       noSession.classList.add('hidden');
       activeSession.classList.remove('hidden');
       sessionCard.classList.add('active-session');
 
-      $('#session-shift-name').textContent = state.session.shiftName;
+      const sShiftName = $('#session-shift-name');
+      const sStartTime = $('#session-start-time');
+      const sEndTime = $('#session-end-time');
+      const checkinPrompt = $('#checkin-prompt');
+
+      if (sShiftName) sShiftName.textContent = state.session.shiftName;
       const clockInDate = new Date(state.session.clockIn);
-      $('#session-start-time').textContent = timeStr(clockInDate);
+      if (sStartTime) sStartTime.textContent = timeStr(clockInDate);
 
       const shift = state.shifts.find(s => s.id === state.session.shiftId);
-      $('#session-end-time').textContent = shift ? shift.endTime : '--:--';
+      if (sEndTime) sEndTime.textContent = shift ? shift.endTime : '--:--';
 
       // Reset checkin
-      $('#checkin-prompt').classList.add('hidden');
+      if (checkinPrompt) checkinPrompt.classList.add('hidden');
     } else {
       noSession.classList.remove('hidden');
       activeSession.classList.add('hidden');
@@ -1106,6 +1124,13 @@
   }
 
   function renderCompletionStats() {
+    const rateEl = $('#completion-rate');
+    const completedEl = $('#stat-completed');
+    const missedEl = $('#stat-missed');
+    const totalHoursEl = $('#stat-total-hours');
+
+    if (!rateEl || !completedEl || !missedEl || !totalHoursEl) return;
+
     const weekStart = getWeekStart();
     const weekLogs = state.logs.filter(l => new Date(l.date) >= weekStart);
 
@@ -1118,10 +1143,10 @@
       .filter(l => l.status === 'completed')
       .reduce((sum, l) => sum + (l.duration || 0), 0) / 3600000;
 
-    $('#completion-rate').textContent = rate + '%';
-    $('#stat-completed').textContent = completed;
-    $('#stat-missed').textContent = missed;
-    $('#stat-total-hours').textContent = totalHours.toFixed(1) + 'h';
+    rateEl.textContent = rate + '%';
+    completedEl.textContent = completed;
+    missedEl.textContent = missed;
+    totalHoursEl.textContent = totalHours.toFixed(1) + 'h';
 
     // Update ring
     const circumference = 2 * Math.PI * 52; // r=52
@@ -1131,8 +1156,10 @@
   }
 
   function renderStreakStats() {
-    $('#stat-current-streak').textContent = state.streaks.current;
-    $('#stat-best-streak').textContent = state.streaks.best;
+    const currentEl = $('#stat-current-streak');
+    const bestEl = $('#stat-best-streak');
+    if (currentEl) currentEl.textContent = state.streaks.current;
+    if (bestEl) bestEl.textContent = state.streaks.best;
   }
 
   function renderWeeklyReview() {
