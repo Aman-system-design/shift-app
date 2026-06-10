@@ -1848,6 +1848,79 @@ body::after {
   color: var(--text-tertiary);
 }
 
+/* ---- GOALS MAP & ONEVIEW ---- */
+.goals-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.goal-progress-card {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goal-progress-card:hover {
+  border-color: rgba(0, 212, 170, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.goal-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goal-progress-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+.goal-progress-counts {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.goal-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+.settings-drawer-container {
+  border-color: var(--border);
+}
+
+.settings-drawer-content {
+  transition: all 0.3s ease;
+  max-height: 2000px;
+  opacity: 1;
+}
+
+.settings-drawer-content.hidden {
+  display: none !important;
+  max-height: 0;
+  opacity: 0;
+}
+
 /* ---- PRINT — hide nav ---- */
 @media print {
   .topbar, .nav-tabs { display: none; }

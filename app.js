@@ -177,11 +177,24 @@
         const panel = $('#' + panelId);
         if (panel) panel.classList.add('active');
         // Refresh data on tab switch
-        if (tab.dataset.tab === 'shifts') renderShiftsList();
-        if (tab.dataset.tab === 'clock') renderClockTab();
-        if (tab.dataset.tab === 'stats') renderStats();
-        if (tab.dataset.tab === 'guide') renderChat();
-        if (tab.dataset.tab === 'settings') loadSettings();
+        if (tab.dataset.tab === 'focus') {
+          renderTodaySchedule();
+          renderClockableShifts();
+          renderClockTab();
+          updateQuickStats();
+        }
+        if (tab.dataset.tab === 'tasks') {
+          renderTasks();
+        }
+        if (tab.dataset.tab === 'guide') {
+          renderChat();
+        }
+        if (tab.dataset.tab === 'oneview') {
+          renderGoalsMap();
+          renderShiftsList();
+          renderStats();
+          loadSettings();
+        }
       });
     });
   }
@@ -1874,6 +1887,17 @@
       if (nextTaskCard) nextTaskCard.style.borderLeftColor = 'var(--border)';
     }
 
+    // Attach click to nextTaskCard for edit
+    if (nextTaskCard) {
+      nextTaskCard.onclick = (e) => {
+        if (e.target.closest('#btn-complete-next') || e.target.closest('#btn-delete-next')) return;
+        const activeTasksList = state.tasks.filter(t => !t.completed);
+        if (activeTasksList.length > 0) {
+          openTaskModal(activeTasksList[0].id);
+        }
+      };
+    }
+
     // 2. Render Checklist (items 1 onwards)
     taskList.innerHTML = '';
     const remainingTasks = activeTasks.slice(1);
@@ -1910,6 +1934,10 @@
       // Content
       const content = document.createElement('div');
       content.className = 'task-content-wrapper';
+      content.style.cursor = 'pointer';
+      content.addEventListener('click', () => {
+        openTaskModal(task.id);
+      });
       
       const name = document.createElement('p');
       name.className = 'task-item-name';
@@ -1923,24 +1951,12 @@
       content.appendChild(name);
       content.appendChild(meta);
 
-      // Actions (Edit/Delete)
+      // Actions (Delete only, edit is triggered by clicking task body)
       const actions = document.createElement('div');
       actions.className = 'task-actions-wrapper';
       actions.style.display = 'flex';
       actions.style.gap = '8px';
       actions.style.marginLeft = 'auto';
-
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn-task-action btn-task-edit';
-      editBtn.textContent = '✏️';
-      editBtn.style.background = 'none';
-      editBtn.style.border = 'none';
-      editBtn.style.cursor = 'pointer';
-      editBtn.style.fontSize = '12px';
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        editTaskName(task.id);
-      });
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'btn-task-action btn-task-delete';
@@ -1954,7 +1970,6 @@
         deleteTask(task.id);
       });
 
-      actions.appendChild(editBtn);
       actions.appendChild(deleteBtn);
 
       item.appendChild(handle);
@@ -2025,6 +2040,52 @@
       opt.textContent = task.name;
       parentSelect.appendChild(opt);
     });
+  }
+
+  function renderGoalsMap() {
+    const container = $('#goals-progress-list');
+    if (!container) return;
+
+    if (!state.goals || state.goals.length === 0) {
+      container.innerHTML = '<div class="empty-state">No goals active. Link your Notion goals database.</div>';
+      return;
+    }
+
+    container.innerHTML = state.goals.map(goal => {
+      // Find all tasks associated with this goal
+      const goalTasks = state.tasks.filter(t => t.goalId === goal.id);
+      const completed = goalTasks.filter(t => t.completed).length;
+      const total = goalTasks.length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return `
+        <div class="goal-progress-card">
+          <div class="goal-progress-header">
+            <span class="goal-progress-name">${goal.name.toUpperCase()}</span>
+            <span class="goal-progress-counts">${completed}/${total} Tasks (${pct}%)</span>
+          </div>
+          <div class="goal-progress-track">
+            <div class="goal-progress-fill" style="width: ${pct}%;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function initSettingsDrawer() {
+    const toggleBtn = $('#btn-toggle-settings');
+    const content = $('#settings-drawer-content');
+    const arrow = $('#settings-drawer-arrow');
+    if (toggleBtn && content) {
+      toggleBtn.addEventListener('click', () => {
+        content.classList.toggle('hidden');
+        if (content.classList.contains('hidden')) {
+          if (arrow) arrow.style.transform = 'rotate(0deg)';
+        } else {
+          if (arrow) arrow.style.transform = 'rotate(180deg)';
+        }
+      });
+    }
   }
 
   function openTaskModal(taskId = null) {
@@ -2681,6 +2742,7 @@
     initChatEvents();
     initTaskmasterEvents();
     initSettings();
+    initSettingsDrawer();
     initAWOL();
     loadSettings();
     rotateQuote();
@@ -2690,10 +2752,12 @@
     processSyncBacklog();
 
     // Initial renders
-    renderShiftsList();
     renderTodaySchedule();
+    renderClockableShifts();
     renderClockTab();
     renderTasks();
+    renderGoalsMap();
+    renderShiftsList();
     pullNotionGoals();
     pullNotionTasks();
     updateQuickStats();
@@ -2708,7 +2772,7 @@
       slowTick();
       processSyncBacklog();
       pullNotionShifts(true); // Quiet auto-pull on tick
-      pullNotionGoals();      // Pull goals
+      pullNotionGoals().then(() => renderGoalsMap()); // Pull goals and render map
       pullNotionTasks(true);  // Quiet task pull
     }, 15000);
 
@@ -2720,7 +2784,7 @@
       slowTick();
       processSyncBacklog();
       pullNotionShifts(true); // Quiet pull on init
-      pullNotionGoals();      // Pull goals on init
+      pullNotionGoals().then(() => renderGoalsMap()); // Pull goals on init
       pullNotionTasks(true);  // Quiet task pull on init
     }, 1000);
   }
