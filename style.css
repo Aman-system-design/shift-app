@@ -299,16 +299,21 @@ body::after {
 
 /* ---- CARDS ---- */
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(18, 18, 26, 0.7) 0%, rgba(10, 10, 15, 0.8) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius);
-  padding: 18px;
-  margin-bottom: 14px;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
 .card:hover {
-  border-color: var(--border-glow);
+  border-color: rgba(0, 212, 170, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 212, 170, 0.05);
+  transform: translateY(-2px);
 }
 
 .card-header {
@@ -483,9 +488,11 @@ body::after {
 
 .countdown-value {
   font-family: var(--font-mono);
-  font-size: 36px;
-  font-weight: 800;
-  color: var(--text-primary);
+  font-size: 38px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   line-height: 1;
   letter-spacing: 2px;
 }
