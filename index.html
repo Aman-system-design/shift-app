@@ -180,15 +180,14 @@
 
       <div class="card card-taskmaster">
         <div class="card-header" style="justify-content: space-between; align-items: center;">
-          <span class="card-tag">TASKMASTER ACTIVE ROUTE</span>
-          <button class="btn btn-ghost btn-sm" id="btn-sync-tasks" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px; border:1px solid var(--border);">SYNC NOTION</button>
-        </div>
-        
-        <div class="task-input-wrapper" style="margin: 12px 0; display: flex; gap: 8px;">
-          <input type="text" id="task-quick-input" placeholder="Type a task and hit Enter..." style="flex:1; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px 14px; font-size:13px; outline:none; font-family:inherit; transition:border-color 0.2s;" autocomplete="off">
+          <span class="card-tag">TASKMASTER</span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-accent btn-sm" id="btn-add-task" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">+ NEW TASK</button>
+            <button class="btn btn-ghost btn-sm" id="btn-sync-tasks" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px; border:1px solid var(--border);">SYNC NOTION</button>
+          </div>
         </div>
 
-        <div class="task-list" id="task-list" style="display:flex; flex-direction:column; gap:8px;">
+        <div class="task-list" id="task-list" style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
           <div class="empty-state">No active tasks. Add one above.</div>
         </div>
       </div>
@@ -279,6 +278,51 @@
             <div class="form-actions">
               <button type="button" class="btn btn-ghost" id="btn-cancel-shift">CANCEL</button>
               <button type="submit" class="btn btn-accent">DEPLOY SHIFT</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      </div>
+
+      <!-- Task Form Modal -->
+      <div class="modal-overlay hidden" id="task-modal">
+        <div class="modal">
+          <div class="modal-header">
+            <h3 id="task-modal-title">DEFINE NEW TASK</h3>
+            <button class="btn-close" id="task-modal-close">✕</button>
+          </div>
+          <form id="task-form">
+            <input type="hidden" id="task-edit-id">
+            <div class="form-group">
+              <label>TASK NAME</label>
+              <input type="text" id="task-name" placeholder="e.g. Solve Algebra Chapter 2" required>
+            </div>
+            <div class="form-group">
+              <label>SLOT</label>
+              <select id="task-slot">
+                <option value="">No Slot (Backlog)</option>
+                <option value="Morning">Morning (6 AM – 12 PM)</option>
+                <option value="Afternoon">Afternoon (12 PM – 5 PM)</option>
+                <option value="Evening">Evening (5 PM – 9 PM)</option>
+                <option value="Night">Night (9 PM – 12 AM)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>GOAL / CATEGORY</label>
+              <select id="task-goal">
+                <option value="">No Goal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>PARENT TASK (SUBTASK RELATION)</label>
+              <select id="task-parent">
+                <option value="">No Parent (Top Level Task)</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost" id="btn-cancel-task">CANCEL</button>
+              <button type="submit" class="btn btn-accent" id="btn-save-task">SAVE TASK</button>
             </div>
           </form>
         </div>

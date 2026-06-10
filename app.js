@@ -82,6 +82,7 @@
     notionShiftSyncBacklog: load('notionShiftSyncBacklog', []), // List of shift definition IDs that need sync
     chatHistory: load('chatHistory', []),
     tasks: load('tasks', []),
+    goals: load('goals', []),
   };
 
   function persist() {
@@ -100,6 +101,7 @@
     save('notionShiftSyncBacklog', state.notionShiftSyncBacklog);
     save('chatHistory', state.chatHistory);
     save('tasks', state.tasks);
+    save('goals', state.goals);
   }
 
   // ========================
@@ -1860,7 +1862,8 @@
       const nextTask = activeTasks[0];
       nextTaskName.textContent = nextTask.name;
       nextTaskSlot.textContent = nextTask.slot ? nextTask.slot.toUpperCase() : 'NO SLOT';
-      nextTaskMeta.textContent = `ID: ${nextTask.id ? nextTask.id.substring(0, 8) : 'Local'}`;
+      const goalName = state.goals?.find(g => g.id === nextTask.goalId)?.name || 'None';
+      nextTaskMeta.textContent = `Goal: ${goalName}`;
       if (nextTaskActions) nextTaskActions.style.display = 'block';
       if (nextTaskCard) nextTaskCard.style.borderLeftColor = 'var(--accent)';
     } else {
@@ -1876,7 +1879,7 @@
     const remainingTasks = activeTasks.slice(1);
 
     if (remainingTasks.length === 0) {
-      taskList.innerHTML = '<div class="empty-state">No other active tasks. Add one below.</div>';
+      taskList.innerHTML = '<div class="empty-state">No other active tasks. Click "+ NEW TASK" to plan.</div>';
       return;
     }
 
@@ -1914,7 +1917,8 @@
 
       const meta = document.createElement('p');
       meta.className = 'task-item-meta';
-      meta.textContent = `${task.slot ? '[' + task.slot + '] ' : ''}ID: ${task.id ? task.id.substring(0, 8) : 'Local'}`;
+      const goalName = state.goals?.find(g => g.id === task.goalId)?.name || 'None';
+      meta.textContent = `${task.slot ? '[' + task.slot + '] ' : ''}Goal: ${goalName}`;
 
       content.appendChild(name);
       content.appendChild(meta);
@@ -1985,34 +1989,86 @@
     });
   }
 
-  async function editTaskName(taskId) {
-    const task = state.tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const newName = prompt('Edit task name:', task.name);
-    if (newName === null) return;
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-
-    task.name = trimmed;
-    persist();
-    renderTasks();
-
-    if (task.id && !task.id.startsWith('local_')) {
-      try {
-        await fetch('/api/sync-tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'update',
-            id: task.id,
-            name: trimmed
-          })
-        });
-      } catch (e) {
-        console.warn('Failed to sync task name edit to Notion:', e);
+  async function pullNotionGoals() {
+    try {
+      const response = await fetch('/api/sync-goals');
+      const res = await response.json();
+      if (response.ok && res.success) {
+        state.goals = res.goals;
+        persist();
+        populateGoalsDropdown();
       }
+    } catch (e) {
+      console.warn('Failed to pull goals:', e);
     }
+  }
+
+  function populateGoalsDropdown() {
+    const goalSelect = $('#task-goal');
+    if (!goalSelect) return;
+    goalSelect.innerHTML = '<option value="">No Goal</option>';
+    state.goals.forEach(goal => {
+      const opt = document.createElement('option');
+      opt.value = goal.id;
+      opt.textContent = goal.name;
+      goalSelect.appendChild(opt);
+    });
+  }
+
+  function populateParentTasksDropdown(excludeTaskId) {
+    const parentSelect = $('#task-parent');
+    if (!parentSelect) return;
+    parentSelect.innerHTML = '<option value="">No Parent (Top Level Task)</option>';
+    state.tasks.filter(t => !t.completed && t.id !== excludeTaskId).forEach(task => {
+      const opt = document.createElement('option');
+      opt.value = task.id;
+      opt.textContent = task.name;
+      parentSelect.appendChild(opt);
+    });
+  }
+
+  function openTaskModal(taskId = null) {
+    const modal = $('#task-modal');
+    const title = $('#task-modal-title');
+    const form = $('#task-form');
+    const editIdInput = $('#task-edit-id');
+    const nameInput = $('#task-name');
+    const slotSelect = $('#task-slot');
+    const goalSelect = $('#task-goal');
+    const parentSelect = $('#task-parent');
+
+    if (!modal) return;
+
+    // Load options
+    populateGoalsDropdown();
+    populateParentTasksDropdown(taskId);
+
+    if (taskId) {
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      title.textContent = 'EDIT TASK';
+      editIdInput.value = task.id;
+      nameInput.value = task.name;
+      slotSelect.value = task.slot || '';
+      goalSelect.value = task.goalId || '';
+      parentSelect.value = task.parentTaskId || '';
+    } else {
+      title.textContent = 'DEFINE NEW TASK';
+      form.reset();
+      editIdInput.value = '';
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  function closeTaskModal() {
+    const modal = $('#task-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function editTaskName(taskId) {
+    openTaskModal(taskId);
   }
 
   async function deleteTask(taskId) {
@@ -2140,45 +2196,100 @@
   }
 
   function initTaskmasterEvents() {
-    const quickInput = $('#task-quick-input');
-    const completeNextBtn = $('#btn-complete-next');
+    const addTaskBtn = $('#btn-add-task');
     const syncTasksBtn = $('#btn-sync-tasks');
+    const completeNextBtn = $('#btn-complete-next');
+    const editNextBtn = $('#btn-edit-next');
+    const deleteNextBtn = $('#btn-delete-next');
 
-    if (quickInput) {
-      quickInput.addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-          const val = quickInput.value.trim();
-          if (!val) return;
+    const modalCloseBtn = $('#task-modal-close');
+    const cancelTaskBtn = $('#btn-cancel-task');
+    const taskForm = $('#task-form');
 
-          // Create temp local task
+    if (addTaskBtn) {
+      addTaskBtn.addEventListener('click', () => openTaskModal());
+    }
+
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeTaskModal);
+    if (cancelTaskBtn) cancelTaskBtn.addEventListener('click', closeTaskModal);
+
+    if (taskForm) {
+      taskForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const editId = $('#task-edit-id').value;
+        const name = $('#task-name').value.trim();
+        const slot = $('#task-slot').value || null;
+        const goalId = $('#task-goal').value || null;
+        const parentTaskId = $('#task-parent').value || null;
+
+        if (!name) return;
+
+        if (editId) {
+          // Edit Mode
+          const task = state.tasks.find(t => t.id === editId);
+          if (task) {
+            task.name = name;
+            task.slot = slot;
+            task.goalId = goalId;
+            task.parentTaskId = parentTaskId;
+            persist();
+            renderTasks();
+          }
+
+          closeTaskModal();
+
+          // Sync edit to Notion
+          if (editId && !editId.startsWith('local_')) {
+            try {
+              await fetch('/api/sync-tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'update',
+                  id: editId,
+                  name,
+                  slot,
+                  goalId,
+                  parentTaskId
+                })
+              });
+            } catch (err) {
+              console.warn('Failed to sync task update:', err);
+            }
+          }
+        } else {
+          // Create Mode
           const tempId = 'local_' + Date.now();
           const newTask = {
             id: tempId,
-            name: val,
+            name,
             completed: false,
-            slot: null,
-            parentTaskId: null,
-            goalId: null
+            slot,
+            parentTaskId,
+            goalId
           };
 
           state.tasks.push(newTask);
           persist();
           renderTasks();
-          quickInput.value = '';
+          closeTaskModal();
 
-          // Async create page in Notion Tasks database
+          // Sync create to Notion
           try {
             const res = await fetch('/api/sync-tasks', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 type: 'create',
-                name: val
+                name,
+                slot,
+                goalId,
+                parentTaskId
               })
             });
             const data = await res.json();
             if (res.ok && data.success) {
-              // Update local task with real Notion ID
               const localTask = state.tasks.find(t => t.id === tempId);
               if (localTask) {
                 localTask.id = data.task.id;
@@ -2202,7 +2313,6 @@
       });
     }
 
-    const editNextBtn = $('#btn-edit-next');
     if (editNextBtn) {
       editNextBtn.addEventListener('click', () => {
         const activeTasks = state.tasks.filter(t => !t.completed);
@@ -2212,7 +2322,6 @@
       });
     }
 
-    const deleteNextBtn = $('#btn-delete-next');
     if (deleteNextBtn) {
       deleteNextBtn.addEventListener('click', () => {
         const activeTasks = state.tasks.filter(t => !t.completed);
@@ -2585,6 +2694,7 @@
     renderTodaySchedule();
     renderClockTab();
     renderTasks();
+    pullNotionGoals();
     pullNotionTasks();
     updateQuickStats();
     renderStats();
@@ -2598,6 +2708,7 @@
       slowTick();
       processSyncBacklog();
       pullNotionShifts(true); // Quiet auto-pull on tick
+      pullNotionGoals();      // Pull goals
       pullNotionTasks(true);  // Quiet task pull
     }, 15000);
 
@@ -2609,6 +2720,7 @@
       slowTick();
       processSyncBacklog();
       pullNotionShifts(true); // Quiet pull on init
+      pullNotionGoals();      // Pull goals on init
       pullNotionTasks(true);  // Quiet task pull on init
     }, 1000);
   }
