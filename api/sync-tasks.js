@@ -42,6 +42,7 @@ export default async function handler(req, res) {
           parentTaskId: page.properties['Parent Task']?.relation?.[0]?.id || null,
           goalId: page.properties.Goal?.relation?.[0]?.id || null,
           doDate: page.properties['Do Date']?.date?.start || null,
+          dueDate: page.properties['Due Date']?.date?.start || null,
           priority: page.properties['Priority']?.status?.name || null,
           status: page.properties['Status']?.status?.name || null,
           description: page.properties['Description']?.rich_text?.[0]?.plain_text || null
@@ -55,7 +56,7 @@ export default async function handler(req, res) {
     // CREATE TASK
     // ==========================================
     if (req.method === 'POST' && req.body.type === 'create') {
-      const { name, slot, parentTaskId, goalId, doDate, priority, status, description } = req.body;
+      const { name, slot, parentTaskId, goalId, doDate, dueDate, priority, status, description } = req.body;
       if (!name) {
         return res.status(400).json({ error: 'Missing task name.' });
       }
@@ -80,6 +81,9 @@ export default async function handler(req, res) {
       }
       if (doDate) {
         properties['Do Date'] = { date: { start: doDate } };
+      }
+      if (dueDate) {
+        properties['Due Date'] = { date: { start: dueDate } };
       }
       if (priority) {
         properties['Priority'] = { status: { name: priority } };
@@ -119,6 +123,7 @@ export default async function handler(req, res) {
           parentTaskId: parentTaskId || null,
           goalId: goalId || null,
           doDate: doDate || null,
+          dueDate: dueDate || null,
           priority: priority || null,
           status: status || null,
           description: description || null
@@ -130,7 +135,7 @@ export default async function handler(req, res) {
     // UPDATE TASK
     // ==========================================
     if (req.method === 'POST' && req.body.type === 'update') {
-      const { id, completed, name, slot, parentTaskId, goalId, archived, doDate, priority, status, description } = req.body;
+      const { id, completed, name, slot, parentTaskId, goalId, archived, doDate, dueDate, priority, status, description } = req.body;
       if (!id) {
         return res.status(400).json({ error: 'Missing task page ID.' });
       }
@@ -154,6 +159,9 @@ export default async function handler(req, res) {
       }
       if (doDate !== undefined) {
         properties['Do Date'] = doDate ? { date: { start: doDate } } : { date: null };
+      }
+      if (dueDate !== undefined) {
+        properties['Due Date'] = dueDate ? { date: { start: dueDate } } : { date: null };
       }
       if (priority !== undefined) {
         properties['Priority'] = priority ? { status: { name: priority } } : { status: null };

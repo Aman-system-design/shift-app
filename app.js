@@ -2149,6 +2149,7 @@
     const goalSelect = $('#task-goal');
     const parentSelect = $('#task-parent');
     const doDateInput = $('#task-do-date');
+    const dueDateInput = $('#task-due-date');
     const prioritySelect = $('#task-priority');
     const statusSelect = $('#task-status');
     const descriptionInput = $('#task-description');
@@ -2182,6 +2183,20 @@
         if (doDateInput) doDateInput.value = dStr;
       } else {
         if (doDateInput) doDateInput.value = '';
+      }
+
+      if (task.dueDate) {
+        let dStr = task.dueDate;
+        if (dStr.length === 10) {
+          dStr += 'T09:00'; // Default 9 AM
+        } else if (dStr.includes('Z')) {
+          dStr = dStr.substring(0, 16);
+        } else if (dStr.includes('+')) {
+          dStr = dStr.substring(0, 16);
+        }
+        if (dueDateInput) dueDateInput.value = dStr;
+      } else {
+        if (dueDateInput) dueDateInput.value = '';
       }
 
       if (prioritySelect) prioritySelect.value = task.priority || '';
@@ -2360,6 +2375,7 @@
         const goalId = $('#task-goal').value || null;
         const parentTaskId = $('#task-parent').value || null;
         const doDate = $('#task-do-date').value || null;
+        const dueDate = $('#task-due-date').value || null;
         const priority = $('#task-priority').value || null;
         const status = $('#task-status').value || 'Not started';
         const description = $('#task-description').value.trim() || null;
@@ -2375,6 +2391,7 @@
             task.goalId = goalId;
             task.parentTaskId = parentTaskId;
             task.doDate = doDate;
+            task.dueDate = dueDate;
             task.priority = priority;
             task.status = status;
             task.description = description;
@@ -2398,6 +2415,7 @@
                   goalId,
                   parentTaskId,
                   doDate,
+                  dueDate,
                   priority,
                   status,
                   description,
@@ -2419,6 +2437,7 @@
             parentTaskId,
             goalId,
             doDate,
+            dueDate,
             priority,
             status,
             description
@@ -2441,6 +2460,7 @@
                 goalId,
                 parentTaskId,
                 doDate,
+                dueDate,
                 priority,
                 status,
                 description,
