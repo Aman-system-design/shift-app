@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'NOTION_TOKEN is not configured on Vercel environment variables.' });
   }
 
-  const databaseId = '9947e240b2314435a22271cee0c575c4';
+  const databaseId = req.query.databaseId || req.body.databaseId || '9947e240b2314435a22271cee0c575c4';
 
   try {
     // ==========================================
@@ -40,7 +40,11 @@ export default async function handler(req, res) {
           completed: page.properties[' Complete']?.checkbox || false,
           slot: page.properties.Slot?.select?.name || null,
           parentTaskId: page.properties['Parent Task']?.relation?.[0]?.id || null,
-          goalId: page.properties.Goal?.relation?.[0]?.id || null
+          goalId: page.properties.Goal?.relation?.[0]?.id || null,
+          doDate: page.properties['Do Date']?.date?.start || null,
+          priority: page.properties['Priority']?.status?.name || null,
+          status: page.properties['Status']?.status?.name || null,
+          description: page.properties['Description']?.rich_text?.[0]?.plain_text || null
         };
       });
 
@@ -51,7 +55,7 @@ export default async function handler(req, res) {
     // CREATE TASK
     // ==========================================
     if (req.method === 'POST' && req.body.type === 'create') {
-      const { name, slot, parentTaskId, goalId } = req.body;
+      const { name, slot, parentTaskId, goalId, doDate, priority, status, description } = req.body;
       if (!name) {
         return res.status(400).json({ error: 'Missing task name.' });
       }
@@ -73,6 +77,18 @@ export default async function handler(req, res) {
       }
       if (goalId) {
         properties['Goal'] = { relation: [{ id: goalId }] };
+      }
+      if (doDate) {
+        properties['Do Date'] = { date: { start: doDate } };
+      }
+      if (priority) {
+        properties['Priority'] = { status: { name: priority } };
+      }
+      if (status) {
+        properties['Status'] = { status: { name: status } };
+      }
+      if (description) {
+        properties['Description'] = { rich_text: [{ text: { content: description } }] };
       }
 
       const response = await fetch('https://api.notion.com/v1/pages', {
@@ -101,7 +117,11 @@ export default async function handler(req, res) {
           completed: false,
           slot: slot || null,
           parentTaskId: parentTaskId || null,
-          goalId: goalId || null
+          goalId: goalId || null,
+          doDate: doDate || null,
+          priority: priority || null,
+          status: status || null,
+          description: description || null
         }
       });
     }
@@ -110,7 +130,7 @@ export default async function handler(req, res) {
     // UPDATE TASK
     // ==========================================
     if (req.method === 'POST' && req.body.type === 'update') {
-      const { id, completed, name, slot, parentTaskId, goalId, archived } = req.body;
+      const { id, completed, name, slot, parentTaskId, goalId, archived, doDate, priority, status, description } = req.body;
       if (!id) {
         return res.status(400).json({ error: 'Missing task page ID.' });
       }
@@ -131,6 +151,18 @@ export default async function handler(req, res) {
       }
       if (goalId !== undefined) {
         properties['Goal'] = goalId ? { relation: [{ id: goalId }] } : { relation: [] };
+      }
+      if (doDate !== undefined) {
+        properties['Do Date'] = doDate ? { date: { start: doDate } } : { date: null };
+      }
+      if (priority !== undefined) {
+        properties['Priority'] = priority ? { status: { name: priority } } : { status: null };
+      }
+      if (status !== undefined) {
+        properties['Status'] = status ? { status: { name: status } } : { status: null };
+      }
+      if (description !== undefined) {
+        properties['Description'] = description ? { rich_text: [{ text: { content: description } }] } : { rich_text: [] };
       }
 
       const requestBody = { properties };

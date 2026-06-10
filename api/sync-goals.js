@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'NOTION_TOKEN is not configured on Vercel environment variables.' });
   }
 
-  const databaseId = '37b9e7a8-adf3-81cb-968a-e5da02b91bc1'; // Central Goals DB
+  const databaseId = req.query.databaseId || req.body.databaseId || '37b9e7a8-adf3-81cb-968a-e5da02b91bc1'; // Central Goals DB
 
   try {
     if (req.method === 'GET' || (req.method === 'POST' && req.body.type === 'pull')) {

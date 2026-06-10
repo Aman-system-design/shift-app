@@ -78,6 +78,8 @@
     notionShiftsDatabaseUrl: load('notionShiftsDatabaseUrl', null),
     notionSubDatabaseId: load('notionSubDatabaseId', null),
     notionSubDatabaseUrl: load('notionSubDatabaseUrl', null),
+    notionTasksDatabaseId: load('notionTasksDatabaseId', null),
+    notionGoalsDatabaseId: load('notionGoalsDatabaseId', null),
     notionSyncBacklog: load('notionSyncBacklog', []), // List of log IDs that failed to sync to Notion
     notionShiftSyncBacklog: load('notionShiftSyncBacklog', []), // List of shift definition IDs that need sync
     chatHistory: load('chatHistory', []),
@@ -97,6 +99,8 @@
     save('notionShiftsDatabaseUrl', state.notionShiftsDatabaseUrl);
     save('notionSubDatabaseId', state.notionSubDatabaseId);
     save('notionSubDatabaseUrl', state.notionSubDatabaseUrl);
+    save('notionTasksDatabaseId', state.notionTasksDatabaseId);
+    save('notionGoalsDatabaseId', state.notionGoalsDatabaseId);
     save('notionSyncBacklog', state.notionSyncBacklog);
     save('notionShiftSyncBacklog', state.notionShiftSyncBacklog);
     save('chatHistory', state.chatHistory);
@@ -1214,12 +1218,17 @@
 
     const toggleBtn = $('#toggle-notifications');
     if (state.settings.notifications) {
-      toggleBtn.classList.add('active');
+      if (toggleBtn) toggleBtn.classList.add('active');
       $('#notif-status').textContent = 'Notifications enabled';
     } else {
-      toggleBtn.classList.remove('active');
+      if (toggleBtn) toggleBtn.classList.remove('active');
       $('#notif-status').textContent = 'Notifications not enabled';
     }
+
+    if ($('#setting-notion-tasks-id')) $('#setting-notion-tasks-id').value = state.notionTasksDatabaseId || '';
+    if ($('#setting-notion-goals-id')) $('#setting-notion-goals-id').value = state.notionGoalsDatabaseId || '';
+    if ($('#setting-notion-shifts-id')) $('#setting-notion-shifts-id').value = state.notionShiftsDatabaseId || '';
+    if ($('#setting-notion-logs-id')) $('#setting-notion-logs-id').value = state.notionDatabaseId || '';
   }
 
   function initSettings() {
@@ -1234,6 +1243,20 @@
         state.settings.sleepTime = $('#setting-sleep').value;
         state.settings.catDate = $('#setting-cat-date').value;
         persist();
+      });
+    });
+
+    const notionInputs = ['setting-notion-tasks-id', 'setting-notion-goals-id', 'setting-notion-shifts-id', 'setting-notion-logs-id'];
+    notionInputs.forEach(id => {
+      const el = $('#' + id);
+      if (!el) return;
+      el.addEventListener('change', () => {
+        state.notionTasksDatabaseId = $('#setting-notion-tasks-id').value.trim() || null;
+        state.notionGoalsDatabaseId = $('#setting-notion-goals-id').value.trim() || null;
+        state.notionShiftsDatabaseId = $('#setting-notion-shifts-id').value.trim() || null;
+        state.notionDatabaseId = $('#setting-notion-logs-id').value.trim() || null;
+        persist();
+        updateNotionUI();
       });
     });
 
@@ -2033,7 +2056,8 @@
 
   async function pullNotionGoals() {
     try {
-      const response = await fetch('/api/sync-goals');
+      const dbParam = state.notionGoalsDatabaseId ? `?databaseId=${state.notionGoalsDatabaseId}` : '';
+      const response = await fetch(`/api/sync-goals${dbParam}`);
       const res = await response.json();
       if (response.ok && res.success) {
         state.goals = res.goals;
@@ -2124,6 +2148,10 @@
     const slotSelect = $('#task-slot');
     const goalSelect = $('#task-goal');
     const parentSelect = $('#task-parent');
+    const doDateInput = $('#task-do-date');
+    const prioritySelect = $('#task-priority');
+    const statusSelect = $('#task-status');
+    const descriptionInput = $('#task-description');
 
     if (!modal) return;
 
@@ -2141,9 +2169,27 @@
       slotSelect.value = task.slot || '';
       goalSelect.value = task.goalId || '';
       parentSelect.value = task.parentTaskId || '';
+      
+      if (task.doDate) {
+        let dStr = task.doDate;
+        if (dStr.length === 10) {
+          dStr += 'T09:00'; // Default 9 AM
+        } else if (dStr.includes('Z')) {
+          dStr = dStr.substring(0, 16);
+        } else if (dStr.includes('+')) {
+          dStr = dStr.substring(0, 16);
+        }
+        if (doDateInput) doDateInput.value = dStr;
+      } else {
+        if (doDateInput) doDateInput.value = '';
+      }
+
+      if (prioritySelect) prioritySelect.value = task.priority || '';
+      if (statusSelect) statusSelect.value = task.status || 'Not started';
+      if (descriptionInput) descriptionInput.value = task.description || '';
     } else {
       title.textContent = 'DEFINE NEW TASK';
-      form.reset();
+      if (form) form.reset();
       editIdInput.value = '';
     }
 
@@ -2177,7 +2223,8 @@
           body: JSON.stringify({
             type: 'update',
             id: deletedTask.id,
-            archived: true
+            archived: true,
+            databaseId: state.notionTasksDatabaseId || undefined
           })
         });
       } catch (e) {
@@ -2234,7 +2281,8 @@
           body: JSON.stringify({
             type: 'update',
             id: task.id,
-            completed: true
+            completed: true,
+            databaseId: state.notionTasksDatabaseId || undefined
           })
         });
       } catch (e) {
@@ -2251,7 +2299,8 @@
     }
 
     try {
-      const response = await fetch('/api/sync-tasks?type=pull');
+      const dbParam = state.notionTasksDatabaseId ? `&databaseId=${state.notionTasksDatabaseId}` : '';
+      const response = await fetch(`/api/sync-tasks?type=pull${dbParam}`);
       const res = await response.json();
       if (response.ok && res.success) {
         // Merge Notion tasks with local tasks
@@ -2310,6 +2359,10 @@
         const slot = $('#task-slot').value || null;
         const goalId = $('#task-goal').value || null;
         const parentTaskId = $('#task-parent').value || null;
+        const doDate = $('#task-do-date').value || null;
+        const priority = $('#task-priority').value || null;
+        const status = $('#task-status').value || 'Not started';
+        const description = $('#task-description').value.trim() || null;
 
         if (!name) return;
 
@@ -2321,6 +2374,10 @@
             task.slot = slot;
             task.goalId = goalId;
             task.parentTaskId = parentTaskId;
+            task.doDate = doDate;
+            task.priority = priority;
+            task.status = status;
+            task.description = description;
             persist();
             renderTasks();
           }
@@ -2339,7 +2396,12 @@
                   name,
                   slot,
                   goalId,
-                  parentTaskId
+                  parentTaskId,
+                  doDate,
+                  priority,
+                  status,
+                  description,
+                  databaseId: state.notionTasksDatabaseId || undefined
                 })
               });
             } catch (err) {
@@ -2355,7 +2417,11 @@
             completed: false,
             slot,
             parentTaskId,
-            goalId
+            goalId,
+            doDate,
+            priority,
+            status,
+            description
           };
 
           state.tasks.push(newTask);
@@ -2373,7 +2439,12 @@
                 name,
                 slot,
                 goalId,
-                parentTaskId
+                parentTaskId,
+                doDate,
+                priority,
+                status,
+                description,
+                databaseId: state.notionTasksDatabaseId || undefined
               })
             });
             const data = await res.json();
@@ -2473,6 +2544,7 @@
           persist();
           
           alert('Notion Databases (Logs, Targets & Devices) created and linked successfully!');
+          loadSettings();
           processSyncBacklog();
           
           // Request Web Push registration immediately after linking Notion

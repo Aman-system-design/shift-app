@@ -266,6 +266,33 @@
                 <option value="">No Parent (Top Level Task)</option>
               </select>
             </div>
+            <div class="form-group">
+              <label>DO DATE & TIME</label>
+              <input type="datetime-local" id="task-do-date">
+            </div>
+            <div class="form-row" style="display:flex; gap:10px;">
+              <div class="form-group" style="flex:1;">
+                <label>PRIORITY</label>
+                <select id="task-priority">
+                  <option value="">No Priority</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>STATUS</label>
+                <select id="task-status">
+                  <option value="Not started">Not started</option>
+                  <option value="In progress">In progress</option>
+                  <option value="Done">Done</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>DESCRIPTION</label>
+              <textarea id="task-description" rows="3" placeholder="Task details/notes..."></textarea>
+            </div>
             <div class="form-actions">
               <button type="button" class="btn btn-ghost" id="btn-cancel-task">CANCEL</button>
               <button type="submit" class="btn btn-accent" id="btn-save-task">SAVE TASK</button>
@@ -280,6 +307,10 @@
     <section class="tab-panel" id="panel-guide">
       <div class="section-header">
         <h2>SITA RAMJI'S GUIDE</h2>
+      </div>
+
+      <div style="font-size:11px; color:var(--text-tertiary); line-height:1.5; margin-bottom:16px; padding:10px 14px; background:rgba(255,255,255,0.02); border-left:3px solid var(--accent); border-radius:4px; font-family:var(--font-sans);">
+        <strong>Spiritual Accountability Proxy:</strong> Sita Ramji utilizes a stateful chat history proxy powered by the Google Gemini API to prompt spiritual accountability, trigger task status updates, and provide direct feedback on completed dharma.
       </div>
 
       <div class="card card-chat-container">
@@ -473,7 +504,29 @@
                 <span>Notion Sync Status</span>
                 <span class="status-badge" id="notion-connection-status" style="font-size:11px;font-family:var(--font-mono);color:var(--text-tertiary);">UNLINKED</span>
               </div>
-              <button class="btn btn-accent btn-block" id="btn-init-notion">LINK NOTION DATABASE</button>
+              <button class="btn btn-accent btn-block" id="btn-init-notion" style="margin-bottom: 12px;">LINK NOTION DATABASE</button>
+              
+              <!-- Custom database ID overrides -->
+              <div style="display:flex; flex-direction:column; gap:8px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
+                <div class="form-group" style="margin-bottom:4px;">
+                  <label style="font-size:9px; letter-spacing:1px;">TASKS DATABASE ID</label>
+                  <input type="text" id="setting-notion-tasks-id" style="padding:6px 10px; font-size:12px; font-family:var(--font-mono);" placeholder="e.g. 9947e240b2314435a22271cee0c575c4">
+                </div>
+                <div class="form-group" style="margin-bottom:4px;">
+                  <label style="font-size:9px; letter-spacing:1px;">GOALS DATABASE ID</label>
+                  <input type="text" id="setting-notion-goals-id" style="padding:6px 10px; font-size:12px; font-family:var(--font-mono);" placeholder="e.g. 37b9e7a8adf381cb968ae5da02b91bc1">
+                </div>
+                <div class="form-group" style="margin-bottom:4px;">
+                  <label style="font-size:9px; letter-spacing:1px;">SHIFTS DATABASE ID</label>
+                  <input type="text" id="setting-notion-shifts-id" style="padding:6px 10px; font-size:12px; font-family:var(--font-mono);" placeholder="e.g. 35b9e7a8adf381419a06d4fa6e235b0c">
+                  <span class="form-hint" style="font-size:9px; margin-top:2px;">Must be shared with "OneView LIFE OS" in Notion first.</span>
+                </div>
+                <div class="form-group" style="margin-bottom:8px;">
+                  <label style="font-size:9px; letter-spacing:1px;">LOGS DATABASE ID</label>
+                  <input type="text" id="setting-notion-logs-id" style="padding:6px 10px; font-size:12px; font-family:var(--font-mono);" placeholder="e.g. ebd13c69f81d4eb7a5ec31d7705470d0">
+                </div>
+              </div>
+
               <div id="notion-link-container" class="hidden" style="margin-top: 12px; display:flex; flex-direction:column; gap:8px;">
                 <p class="form-hint" style="margin-bottom: 4px;">Databases Connected successfully.</p>
                 <a id="notion-db-url" href="#" target="_blank" class="btn btn-ghost btn-block" style="text-align:center;text-decoration:none;display:block;font-size:12px;">OPEN OPERATIONS LOGS ↗</a>
