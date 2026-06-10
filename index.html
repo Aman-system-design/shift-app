@@ -45,7 +45,7 @@
       <div class="topbar-clock" id="topbar-clock">--:--:--</div>
       <div class="topbar-status" id="topbar-status">
         <span class="status-dot offline" id="notion-sync-indicator" style="background:#6b7280;margin-right:8px;" title="Notion Unlinked"></span>
-        <span class="status-dot offline"></span>
+        <span class="status-dot offline" id="duty-status-dot"></span>
         <span class="status-label">OFF DUTY</span>
       </div>
     </div>
@@ -80,6 +80,24 @@
       <div class="section-header" style="margin-bottom: 12px;">
         <h2>DAILY FOCUS</h2>
         <span class="card-date" id="current-date" style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary);">—</span>
+      </div>
+
+      <!-- Next Task Focus Card -->
+      <div class="card card-next-task" id="next-task-card" style="cursor: pointer; transition: background-color 0.2s;">
+        <div class="card-header">
+          <span class="card-tag tag-urgent" style="background: var(--accent); color: var(--bg-body); font-weight:800;">NEXT TASK</span>
+          <span class="card-tag" id="next-task-slot">—</span>
+        </div>
+        <div class="next-task-display" id="next-task-display" style="padding: 4px 0;">
+          <h3 id="next-task-name" style="font-size: 20px; font-weight:800; color:var(--text-primary); margin:0 0 6px 0; letter-spacing: -0.5px;">No active tasks.</h3>
+          <p id="next-task-meta" style="font-size: 11px; font-family:var(--font-mono); color:var(--text-tertiary); margin:0;">Goal: None</p>
+        </div>
+        <div class="next-task-actions" id="next-task-actions" style="margin-top: 14px; display: none;">
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-accent btn-sm" id="btn-complete-next" style="flex:1;">COMPLETE TASK</button>
+            <button class="btn btn-ghost btn-sm" id="btn-delete-next" style="padding:6px 12px; font-size:12px; color:#ef4444; border-color:rgba(239,68,68,0.2);">🗑️</button>
+          </div>
+        </div>
       </div>
 
       <!-- Quote Banner -->
@@ -135,23 +153,6 @@
         </div>
       </div>
 
-      <!-- Next Task Focus Card -->
-      <div class="card card-next-task" id="next-task-card" style="cursor: pointer; transition: background-color 0.2s;">
-        <div class="card-header">
-          <span class="card-tag tag-urgent" style="background: var(--accent); color: var(--bg-body); font-weight:800;">NEXT TASK</span>
-          <span class="card-tag" id="next-task-slot">—</span>
-        </div>
-        <div class="next-task-display" id="next-task-display" style="padding: 4px 0;">
-          <h3 id="next-task-name" style="font-size: 20px; font-weight:800; color:var(--text-primary); margin:0 0 6px 0; letter-spacing: -0.5px;">No active tasks.</h3>
-          <p id="next-task-meta" style="font-size: 11px; font-family:var(--font-mono); color:var(--text-tertiary); margin:0;">Goal: None</p>
-        </div>
-        <div class="next-task-actions" id="next-task-actions" style="margin-top: 14px; display: none;">
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-accent btn-sm" id="btn-complete-next" style="flex:1;">COMPLETE TASK</button>
-            <button class="btn btn-ghost btn-sm" id="btn-delete-next" style="padding:6px 12px; font-size:12px; color:#ef4444; border-color:rgba(239,68,68,0.2);">🗑️</button>
-          </div>
-        </div>
-      </div>
 
       <!-- Active Clock-in Session (Inline) -->
       <div class="card card-session active-session-container" id="session-card">

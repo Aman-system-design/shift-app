@@ -347,7 +347,7 @@
   // TOPBAR STATUS
   // ========================
   function updateTopbarStatus(now) {
-    const statusDot = $('.status-dot');
+    const statusDot = $('#duty-status-dot');
     const statusLabel = $('.status-label');
     if (!statusDot || !statusLabel) return;
 
