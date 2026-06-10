@@ -159,6 +159,36 @@
         </div>
       </div>
 
+      <!-- ==================== TASKMASTER ==================== -->
+      <div class="card card-next-task" id="next-task-card">
+        <div class="card-header">
+          <span class="card-tag tag-urgent" style="background: var(--accent); color: var(--bg-body); font-weight:800;">NEXT TASK</span>
+          <span class="card-tag" id="next-task-slot">—</span>
+        </div>
+        <div class="next-task-display" id="next-task-display" style="padding: 4px 0;">
+          <h3 id="next-task-name" style="font-size: 20px; font-weight:800; color:var(--text-primary); margin:0 0 6px 0; letter-spacing: -0.5px;">No active tasks.</h3>
+          <p id="next-task-meta" style="font-size: 11px; font-family:var(--font-mono); color:var(--text-tertiary); margin:0;">Goal: None</p>
+        </div>
+        <div class="next-task-actions" id="next-task-actions" style="margin-top: 14px; display: none;">
+          <button class="btn btn-accent btn-sm" id="btn-complete-next" style="width:100%;">COMPLETE THIS TASK</button>
+        </div>
+      </div>
+
+      <div class="card card-taskmaster">
+        <div class="card-header" style="justify-content: space-between; align-items: center;">
+          <span class="card-tag">TASKMASTER ACTIVE ROUTE</span>
+          <button class="btn btn-ghost btn-sm" id="btn-sync-tasks" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px; border:1px solid var(--border);">SYNC NOTION</button>
+        </div>
+        
+        <div class="task-input-wrapper" style="margin: 12px 0; display: flex; gap: 8px;">
+          <input type="text" id="task-quick-input" placeholder="Type a task and hit Enter..." style="flex:1; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); padding:10px 14px; font-size:13px; outline:none; font-family:inherit; transition:border-color 0.2s;" autocomplete="off">
+        </div>
+
+        <div class="task-list" id="task-list" style="display:flex; flex-direction:column; gap:8px;">
+          <div class="empty-state">No active tasks. Add one above.</div>
+        </div>
+      </div>
+
       <!-- Quick Stats Row -->
       <div class="stats-row">
         <div class="stat-card">

@@ -81,6 +81,7 @@
     notionSyncBacklog: load('notionSyncBacklog', []), // List of log IDs that failed to sync to Notion
     notionShiftSyncBacklog: load('notionShiftSyncBacklog', []), // List of shift definition IDs that need sync
     chatHistory: load('chatHistory', []),
+    tasks: load('tasks', []),
   };
 
   function persist() {
@@ -98,6 +99,7 @@
     save('notionSyncBacklog', state.notionSyncBacklog);
     save('notionShiftSyncBacklog', state.notionShiftSyncBacklog);
     save('chatHistory', state.chatHistory);
+    save('tasks', state.tasks);
   }
 
   // ========================
@@ -1835,6 +1837,284 @@
     });
   }
 
+  // ========================
+  // TASKMASTER & NOTION SYNC
+  // ========================
+  let dragSrcIndex = null;
+
+  function renderTasks() {
+    const nextTaskCard = $('#next-task-card');
+    const nextTaskName = $('#next-task-name');
+    const nextTaskSlot = $('#next-task-slot');
+    const nextTaskMeta = $('#next-task-meta');
+    const nextTaskActions = $('#next-task-actions');
+    const taskList = $('#task-list');
+
+    if (!taskList) return;
+
+    // Filter active incomplete tasks
+    const activeTasks = state.tasks.filter(t => !t.completed);
+
+    // 1. Render Next Up Focus Card
+    if (activeTasks.length > 0) {
+      const nextTask = activeTasks[0];
+      nextTaskName.textContent = nextTask.name;
+      nextTaskSlot.textContent = nextTask.slot ? nextTask.slot.toUpperCase() : 'NO SLOT';
+      nextTaskMeta.textContent = `ID: ${nextTask.id ? nextTask.id.substring(0, 8) : 'Local'}`;
+      if (nextTaskActions) nextTaskActions.style.display = 'block';
+      if (nextTaskCard) nextTaskCard.style.borderLeftColor = 'var(--accent)';
+    } else {
+      nextTaskName.textContent = 'All tasks completed. Fulfill your dharma.';
+      nextTaskSlot.textContent = '—';
+      nextTaskMeta.textContent = 'Goal: None';
+      if (nextTaskActions) nextTaskActions.style.display = 'none';
+      if (nextTaskCard) nextTaskCard.style.borderLeftColor = 'var(--border)';
+    }
+
+    // 2. Render Checklist (items 1 onwards)
+    taskList.innerHTML = '';
+    const remainingTasks = activeTasks.slice(1);
+
+    if (remainingTasks.length === 0) {
+      taskList.innerHTML = '<div class="empty-state">No other active tasks. Add one below.</div>';
+      return;
+    }
+
+    remainingTasks.forEach((task, index) => {
+      // Offset by 1 because activeTasks[0] is in the Next Up focus card
+      const actualIndex = state.tasks.indexOf(task);
+
+      const item = document.createElement('div');
+      item.className = 'task-item';
+      item.draggable = true;
+      item.dataset.index = actualIndex;
+
+      // Drag handle
+      const handle = document.createElement('div');
+      handle.className = 'task-drag-handle';
+      handle.textContent = '⋮⋮';
+
+      // Checkbox
+      const checkWrapper = document.createElement('div');
+      checkWrapper.className = 'task-checkbox-wrapper';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'task-checkbox-input';
+      checkbox.checked = task.completed;
+      checkbox.addEventListener('change', () => toggleTaskComplete(task.id));
+      checkWrapper.appendChild(checkbox);
+
+      // Content
+      const content = document.createElement('div');
+      content.className = 'task-content-wrapper';
+      
+      const name = document.createElement('p');
+      name.className = 'task-item-name';
+      name.textContent = task.name;
+
+      const meta = document.createElement('p');
+      meta.className = 'task-item-meta';
+      meta.textContent = `${task.slot ? '[' + task.slot + '] ' : ''}ID: ${task.id ? task.id.substring(0, 8) : 'Local'}`;
+
+      content.appendChild(name);
+      content.appendChild(meta);
+
+      item.appendChild(handle);
+      item.appendChild(checkWrapper);
+      item.appendChild(content);
+
+      // HTML5 Drag-and-Drop Handlers
+      item.addEventListener('dragstart', (e) => {
+        dragSrcIndex = actualIndex;
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const targetIndex = parseInt(item.dataset.index);
+        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+          const moved = state.tasks.splice(dragSrcIndex, 1)[0];
+          state.tasks.splice(targetIndex, 0, moved);
+          persist();
+          renderTasks();
+        }
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        dragSrcIndex = null;
+      });
+
+      taskList.appendChild(item);
+    });
+  }
+
+  async function toggleTaskComplete(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    task.completed = true;
+    persist();
+    renderTasks();
+
+    // Trigger Sita Ramji command acknowledging completion
+    if (state.chatHistory.length > 0) {
+      state.chatHistory.push({
+        role: 'user',
+        content: `Completed task: ${task.name}`,
+        timestamp: Date.now()
+      });
+      persist();
+      if ($('#panel-guide')?.classList.contains('active')) renderChat();
+      
+      // Call chat proxy to get Sita Ramji's reaction
+      fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: state.chatHistory,
+          userContext: { name: state.settings.name || 'Operator' }
+        })
+      }).then(r => r.json()).then(res => {
+        if (res.reply) {
+          state.chatHistory.push({
+            role: 'assistant',
+            content: res.reply,
+            timestamp: Date.now()
+          });
+          persist();
+          if ($('#panel-guide')?.classList.contains('active')) renderChat();
+        }
+      }).catch(err => console.warn('Chat trigger error:', err));
+    }
+
+    // Sync completion to Notion
+    if (task.id && !task.id.startsWith('local_')) {
+      try {
+        await fetch('/api/sync-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'update',
+            id: task.id,
+            completed: true
+          })
+        });
+      } catch (e) {
+        console.warn('Failed to sync task completion to Notion:', e);
+      }
+    }
+  }
+
+  async function pullNotionTasks(quiet = false) {
+    const syncBtn = $('#btn-sync-tasks');
+    if (syncBtn && !quiet) {
+      syncBtn.disabled = true;
+      syncBtn.textContent = 'SYNCING...';
+    }
+
+    try {
+      const response = await fetch('/api/sync-tasks?type=pull');
+      const res = await response.json();
+      if (response.ok && res.success) {
+        // Merge Notion tasks with local tasks
+        const notionTasks = res.tasks;
+        
+        // Remove locally cached active tasks that aren't in Notion's active list
+        // (but keep purely offline local tasks starting with 'local_')
+        state.tasks = state.tasks.filter(t => t.id.startsWith('local_'));
+        
+        // Append Notion tasks
+        notionTasks.forEach(nt => {
+          if (!state.tasks.some(t => t.id === nt.id)) {
+            state.tasks.push(nt);
+          }
+        });
+
+        persist();
+        renderTasks();
+      } else {
+        console.warn('Failed to pull tasks:', res.error);
+      }
+    } catch (e) {
+      console.warn('Network error pulling tasks:', e);
+    } finally {
+      if (syncBtn && !quiet) {
+        syncBtn.disabled = false;
+        syncBtn.textContent = 'SYNC NOTION';
+      }
+    }
+  }
+
+  function initTaskmasterEvents() {
+    const quickInput = $('#task-quick-input');
+    const completeNextBtn = $('#btn-complete-next');
+    const syncTasksBtn = $('#btn-sync-tasks');
+
+    if (quickInput) {
+      quickInput.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+          const val = quickInput.value.trim();
+          if (!val) return;
+
+          // Create temp local task
+          const tempId = 'local_' + Date.now();
+          const newTask = {
+            id: tempId,
+            name: val,
+            completed: false,
+            slot: null,
+            parentTaskId: null,
+            goalId: null
+          };
+
+          state.tasks.push(newTask);
+          persist();
+          renderTasks();
+          quickInput.value = '';
+
+          // Async create page in Notion Tasks database
+          try {
+            const res = await fetch('/api/sync-tasks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'create',
+                name: val
+              })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              // Update local task with real Notion ID
+              const localTask = state.tasks.find(t => t.id === tempId);
+              if (localTask) {
+                localTask.id = data.task.id;
+                persist();
+                renderTasks();
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to create task in Notion, kept local:', err);
+          }
+        }
+      });
+    }
+
+    if (completeNextBtn) {
+      completeNextBtn.addEventListener('click', () => {
+        const activeTasks = state.tasks.filter(t => !t.completed);
+        if (activeTasks.length > 0) {
+          toggleTaskComplete(activeTasks[0].id);
+        }
+      });
+    }
+
+    if (syncTasksBtn) {
+      syncTasksBtn.addEventListener('click', pullNotionTasks);
+    }
+  }
+
   function initNotionEvents() {
     const btn = $('#btn-init-notion');
     const pullBtn = $('#btn-pull-notion');
@@ -2178,6 +2458,7 @@
     initShiftForm();
     initClockEvents();
     initChatEvents();
+    initTaskmasterEvents();
     initSettings();
     initAWOL();
     loadSettings();
@@ -2191,6 +2472,8 @@
     renderShiftsList();
     renderTodaySchedule();
     renderClockTab();
+    renderTasks();
+    pullNotionTasks();
     updateQuickStats();
     renderStats();
     updateClocks();
@@ -2203,6 +2486,7 @@
       slowTick();
       processSyncBacklog();
       pullNotionShifts(true); // Quiet auto-pull on tick
+      pullNotionTasks(true);  // Quiet task pull
     }, 15000);
 
     // Quote rotation — every 60 seconds
@@ -2213,6 +2497,7 @@
       slowTick();
       processSyncBacklog();
       pullNotionShifts(true); // Quiet pull on init
+      pullNotionTasks(true);  // Quiet task pull on init
     }, 1000);
   }
 

@@ -1727,6 +1727,127 @@ body::after {
   border-color: var(--accent);
 }
 
+/* ====== TASKMASTER ====== */
+.card-next-task {
+  border-left: 4px solid var(--accent);
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.05) 0%, rgba(10, 10, 15, 0.8) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-next-task::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 150px;
+  height: 100%;
+  background: radial-gradient(circle at top right, rgba(167, 139, 250, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  transition: transform 0.2s, background 0.2s, border-color 0.2s;
+  user-select: none;
+}
+
+.task-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+.task-item.dragging {
+  opacity: 0.4;
+  border-style: dashed;
+  background: rgba(167, 139, 250, 0.05);
+}
+
+.task-drag-handle {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  cursor: grab;
+  user-select: none;
+  font-size: 16px;
+  padding-right: 4px;
+}
+
+.task-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.task-checkbox-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.task-checkbox-input::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  background-color: var(--bg-body);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.task-checkbox-input:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.task-checkbox-input:checked::before {
+  transform: scale(1);
+}
+
+.task-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+  transition: color 0.2s;
+}
+
+.task-item-meta {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.task-item.completed .task-item-name {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+
 /* ---- PRINT — hide nav ---- */
 @media print {
   .topbar, .nav-tabs { display: none; }
