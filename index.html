@@ -3,31 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="theme-color" content="#05060e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/svg+xml" href="icon-192.svg">
   <link rel="apple-touch-icon" href="icon-192.svg">
-  <meta name="description" content="SHIFT — Military-grade accountability for your personal life.">
-  <title>SHIFT — Command Center</title>
+  <meta name="description" content="MySpace — Cyber-minimalist operations command center and accountability workspace.">
+  <title>MySpace — Command Center</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <!-- ==================== AWOL ALERT OVERLAY ==================== -->
-  <div id="awol-alert" class="awol-alert hidden">
-    <div class="awol-alert-inner">
-      <div class="awol-pulse-ring"></div>
-      <div class="awol-icon">⚠</div>
-      <div class="awol-label">ACTIVE SHIFT DETECTED</div>
-      <div class="awol-shift-name" id="awol-shift-name">—</div>
-      <div class="awol-message">You are currently AWOL. Clock in or stand down.</div>
-      <div class="awol-actions">
-        <button class="btn btn-accent btn-lg" id="awol-clock-in">CLOCK IN NOW</button>
+  <div id="awol-alert" class="awol-alert hidden" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(5,6,14,0.96); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(10px);">
+    <div class="awol-alert-inner" style="background:var(--bg-elevated); border:2px solid var(--accent-magenta); border-radius:var(--radius); padding:30px; text-align:center; max-width:400px; box-shadow:0 0 30px var(--magenta-glow);">
+      <div class="awol-icon" style="font-size:48px; color:var(--accent-magenta); margin-bottom:12px;">⚠</div>
+      <div class="awol-label" style="font-family:var(--font-sans); font-weight:800; font-size:16px; color:var(--accent-magenta); letter-spacing:1px; margin-bottom:8px;">ACTIVE SHIFT DETECTED</div>
+      <div class="awol-shift-name" id="awol-shift-name" style="font-family:var(--font-mono); font-size:18px; font-weight:700; margin-bottom:16px;">—</div>
+      <p class="awol-message" style="font-size:13px; color:var(--text-secondary); margin-bottom:24px;">You are currently AWOL. Clock in or stand down, operator.</p>
+      <div class="awol-actions" style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn btn-accent btn-lg btn-block" id="awol-clock-in">CLOCK IN NOW</button>
         <button class="btn btn-ghost btn-sm" id="awol-dismiss">DISMISS</button>
       </div>
     </div>
@@ -42,34 +38,17 @@
       </div>
     </div>
     <div class="topbar-right">
-      <div class="topbar-clock" id="topbar-clock">--:--:--</div>
+      <div class="topbar-clock" id="topbar-clock">
+        <span id="master-clock">--:--:--</span>
+        <span id="master-period"></span>
+      </div>
       <div class="topbar-status" id="topbar-status">
-        <span class="status-dot offline" id="notion-sync-indicator" style="background:#6b7280;margin-right:8px;" title="Notion Unlinked"></span>
-        <span class="status-dot offline" id="duty-status-dot"></span>
+        <span class="status-dot" id="notion-sync-indicator" title="Notion Unlinked"></span>
+        <span class="status-dot" id="duty-status-dot"></span>
         <span class="status-label">OFF DUTY</span>
       </div>
     </div>
   </header>
-
-  <!-- ==================== NAV TABS ==================== -->
-  <nav class="nav-tabs">
-    <button class="nav-tab active" data-tab="focus">
-      <span class="nav-icon">◎</span>
-      <span class="nav-label">FOCUS</span>
-    </button>
-    <button class="nav-tab" data-tab="tasks">
-      <span class="nav-icon">▦</span>
-      <span class="nav-label">TASKS</span>
-    </button>
-    <button class="nav-tab" data-tab="guide">
-      <span class="nav-icon">👁</span>
-      <span class="nav-label">GUIDE</span>
-    </button>
-    <button class="nav-tab" data-tab="oneview">
-      <span class="nav-icon">◩</span>
-      <span class="nav-label">ONEVIEW</span>
-    </button>
-  </nav>
 
   <!-- ==================== MAIN CONTENT ==================== -->
   <main class="main-content">
@@ -77,36 +56,37 @@
     <!-- ====== FOCUS TAB ====== -->
     <section class="tab-panel active" id="panel-focus">
       
-      <div class="section-header" style="margin-bottom: 12px;">
-        <h2>DAILY FOCUS</h2>
-        <span class="card-date" id="current-date" style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary);">—</span>
-      </div>
-
-      <!-- Next Task Focus Card -->
-      <div class="card card-next-task" id="next-task-card" style="cursor: pointer; transition: background-color 0.2s;">
+      <!-- Next Task Focus Card - Placed on Top -->
+      <div class="card card-next-task" id="next-task-card" style="cursor: pointer;">
         <div class="card-header">
-          <span class="card-tag tag-urgent" style="background: var(--accent); color: var(--bg-body); font-weight:800;">NEXT TASK</span>
+          <span class="card-tag tag-urgent">NEXT TASK</span>
           <span class="card-tag" id="next-task-slot">—</span>
         </div>
-        <div class="next-task-display" id="next-task-display" style="padding: 4px 0;">
-          <h3 id="next-task-name" style="font-size: 20px; font-weight:800; color:var(--text-primary); margin:0 0 6px 0; letter-spacing: -0.5px;">No active tasks.</h3>
-          <p id="next-task-meta" style="font-size: 11px; font-family:var(--font-mono); color:var(--text-tertiary); margin:0;">Goal: None</p>
+        <div class="next-task-display">
+          <h3 id="next-task-name">Loading next focus...</h3>
+          <p id="next-task-meta">Goal: None</p>
         </div>
         <div class="next-task-actions" id="next-task-actions" style="margin-top: 14px; display: none;">
           <div style="display:flex; gap:8px;">
             <button class="btn btn-accent btn-sm" id="btn-complete-next" style="flex:1;">COMPLETE TASK</button>
-            <button class="btn btn-ghost btn-sm" id="btn-delete-next" style="padding:6px 12px; font-size:12px; color:#ef4444; border-color:rgba(239,68,68,0.2);">🗑️</button>
+            <button class="btn btn-ghost btn-sm" id="btn-edit-next" style="font-size:11px;">EDIT</button>
+            <button class="btn btn-ghost btn-sm" id="btn-delete-next" style="padding:6px 12px; font-size:12px; color:var(--danger); border-color:rgba(255,51,102,0.2);">🗑️</button>
           </div>
         </div>
       </div>
 
       <!-- Quote Banner -->
       <div class="quote-banner">
-        <p class="quote-text" id="stoic-quote">"It is not that we have a short time to live, but that we waste a great deal of it."</p>
-        <p class="quote-author" id="stoic-author">— Seneca</p>
+        <p class="quote-text" id="stoic-quote">"Loading quote..."</p>
+        <p class="quote-author" id="stoic-author">— Marcus Aurelius</p>
       </div>
 
-      <!-- Waking Hours -->
+      <div class="section-header" style="margin-bottom: 12px;">
+        <h2>DAILY FOCUS</h2>
+        <span id="current-date" style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary);">—</span>
+      </div>
+
+      <!-- Waking Hours remaining -->
       <div class="card card-waking">
         <div class="card-header">
           <span class="card-tag">WAKING HOURS REMAINING</span>
@@ -115,7 +95,7 @@
         <div class="progress-bar-container">
           <div class="progress-bar-track">
             <div class="progress-bar-fill" id="waking-bar"></div>
-            <div class="progress-bar-glow" id="waking-bar-glow"></div>
+            <div class="progress-bar-glow" id="waking-bar-glow" style="display:none;"></div>
           </div>
         </div>
         <div class="progress-labels">
@@ -124,7 +104,23 @@
         </div>
       </div>
 
-      <!-- CAT Countdown -->
+      <!-- Quick stats summary on Focus Tab -->
+      <div class="stats-row" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+        <div class="stat-card">
+          <span class="stat-value" id="today-completed">0</span>
+          <span class="stat-label">COMPLETED</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="today-missed">0</span>
+          <span class="stat-label">MISSED</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="current-streak">0</span>
+          <span class="stat-label">STREAK</span>
+        </div>
+      </div>
+
+      <!-- CAT Exam Countdown -->
       <div class="card card-countdown">
         <div class="card-header">
           <span class="card-tag">CAT EXAM COUNTDOWN</span>
@@ -153,28 +149,28 @@
         </div>
       </div>
 
-
-      <!-- Active Clock-in Session (Inline) -->
+      <!-- Active Clock-in Session Container -->
       <div class="card card-session active-session-container" id="session-card">
         <div id="clock-no-session">
           <div class="empty-state-large">
             <div class="empty-icon">⏸</div>
             <h3>NO ACTIVE SESSION</h3>
-            <p>Select an active shift below to clock in, soldier.</p>
+            <p>Select an active shift below to clock in.</p>
           </div>
         </div>
         <div id="clock-active-session" class="hidden">
           <div class="session-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <span class="card-tag tag-live pulse">ON DUTY</span>
-            <span class="session-shift-name" id="session-shift-name" style="font-family:var(--font-mono); font-weight:700; color:var(--text-primary);">—</span>
+            <span class="card-tag tag-live">ON DUTY</span>
+            <span class="session-shift-name" id="session-shift-name" style="font-family:var(--font-mono); font-weight:700;">—</span>
           </div>
-          <div class="session-timer" id="session-timer" style="font-family:var(--font-mono); font-size:42px; font-weight:800; color:var(--accent); text-align:center; text-shadow:0 0 20px var(--accent-glow); margin:12px 0;">00:00:00</div>
+          <div class="session-timer" id="session-timer">00:00:00</div>
           <div class="session-meta" style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); margin-bottom:16px;">
-            <span>Clocked in at <strong id="session-start-time">--:--</strong></span>
-            <span>Shift ends at <strong id="session-end-time">--:--</strong></span>
+            <span>In: <strong id="session-start-time">--:--</strong></span>
+            <span>End: <strong id="session-end-time">--:--</strong></span>
           </div>
+          
           <div class="checkin-prompt hidden" id="checkin-prompt" style="background:var(--warning-bg); border:1px solid rgba(245,158,11,0.2); border-radius:var(--radius-sm); padding:12px; margin-bottom:16px; text-align:center;">
-            <p style="font-size:12px; font-family:var(--font-mono); font-weight:700; color:var(--warning); margin-bottom:8px;">⚡ STILL ON TASK, SOLDIER?</p>
+            <p style="font-size:12px; font-weight:700; color:var(--warning); margin-bottom:8px;">⚡ STILL COMMITTED TO SHIFT?</p>
             <div class="checkin-actions" style="display:flex; gap:8px; justify-content:center;">
               <button class="btn btn-accent btn-sm" id="checkin-yes">AFFIRM</button>
               <button class="btn btn-danger btn-sm" id="checkin-no">NEGATIVE</button>
@@ -191,7 +187,7 @@
           <span class="card-tag tag-live" id="duty-status">NO ACTIVE SHIFT</span>
         </div>
         <div class="duty-info" id="duty-info">
-          <p class="duty-message">No shift currently active. Check your schedule below.</p>
+          <p class="duty-message">No shift currently active.</p>
         </div>
       </div>
 
@@ -224,9 +220,12 @@
       <div class="card card-taskmaster">
         <div class="card-header" style="justify-content: space-between; align-items: center;">
           <span class="card-tag">TASKMASTER CHECKLIST</span>
-          <button class="btn btn-accent btn-sm" id="btn-add-task" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">+ NEW TASK</button>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost btn-sm" id="btn-sync-tasks" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">SYNC NOTION</button>
+            <button class="btn btn-accent btn-sm" id="btn-add-task" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">+ NEW TASK</button>
+          </div>
         </div>
-        <div class="task-list" id="task-list" style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+        <div class="task-list" id="task-list" style="margin-top:12px;">
           <div class="empty-state">No active tasks. Add one above.</div>
         </div>
       </div>
@@ -266,18 +265,18 @@
                 <option value="">No Parent (Top Level Task)</option>
               </select>
             </div>
-             <div class="form-row" style="display:flex; gap:10px; margin-bottom: 12px;">
-               <div class="form-group" style="flex:1; margin-bottom: 0;">
-                 <label>DO DATE & TIME</label>
-                 <input type="datetime-local" id="task-do-date">
-               </div>
-               <div class="form-group" style="flex:1; margin-bottom: 0;">
-                 <label>DUE DATE & TIME</label>
-                 <input type="datetime-local" id="task-due-date">
-               </div>
-             </div>
-            <div class="form-row" style="display:flex; gap:10px;">
-              <div class="form-group" style="flex:1;">
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label>DO DATE & TIME</label>
+                <input type="datetime-local" id="task-do-date">
+              </div>
+              <div class="form-group">
+                <label>DUE DATE & TIME</label>
+                <input type="datetime-local" id="task-due-date">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
                 <label>PRIORITY</label>
                 <select id="task-priority">
                   <option value="">No Priority</option>
@@ -286,7 +285,7 @@
                   <option value="Low">Low</option>
                 </select>
               </div>
-              <div class="form-group" style="flex:1;">
+              <div class="form-group">
                 <label>STATUS</label>
                 <select id="task-status">
                   <option value="Not started">Not started</option>
@@ -315,7 +314,7 @@
         <h2>SITA RAMJI'S GUIDE</h2>
       </div>
 
-      <div style="font-size:11px; color:var(--text-tertiary); line-height:1.5; margin-bottom:16px; padding:10px 14px; background:rgba(255,255,255,0.02); border-left:3px solid var(--accent); border-radius:4px; font-family:var(--font-sans);">
+      <div style="font-size:11px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px; padding:10px 14px; background:rgba(255,255,255,0.02); border-left:3px solid var(--accent); border-radius:4px; font-family:var(--font-sans);">
         <strong>Spiritual Accountability Proxy:</strong> Sita Ramji utilizes a stateful chat history proxy powered by the Google Gemini API to prompt spiritual accountability, trigger task status updates, and provide direct feedback on completed dharma.
       </div>
 
@@ -350,6 +349,58 @@
         </div>
       </div>
 
+      <!-- The Truth Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">THE TRUTH</span>
+        </div>
+        <div id="truth-content" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Weekly Stats Overview Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">WEEKLY OPERATIONS ANALYSIS</span>
+        </div>
+        <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+          <!-- Circular Ring Progress -->
+          <div style="position:relative; width:120px; height:120px; display:flex; align-items:center; justify-content:center; margin:0 auto;">
+            <svg width="120" height="120" viewBox="0 0 120 120" style="transform: rotate(-90deg);">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="8"></circle>
+              <circle id="completion-ring-fill" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="8" stroke-dasharray="326.7" stroke-dashoffset="326.7" style="transition: stroke-dashoffset 0.5s ease;"></circle>
+            </svg>
+            <div style="position:absolute; font-family:var(--font-mono); font-size:20px; font-weight:700; color:var(--text-primary);" id="completion-rate">0%</div>
+          </div>
+          <!-- Numeric Stats List -->
+          <div style="flex:1; min-width:160px; display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px;">
+              <span style="color:var(--text-secondary);">Completed:</span>
+              <strong id="stat-completed" style="font-family:var(--font-mono); color:var(--accent);">0</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px;">
+              <span style="color:var(--text-secondary);">Missed:</span>
+              <strong id="stat-missed" style="font-family:var(--font-mono); color:var(--accent-magenta);">0</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px;">
+              <span style="color:var(--text-secondary);">Total Effort Hours:</span>
+              <strong id="stat-total-hours" style="font-family:var(--font-mono); color:var(--blue);">0h</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Review Card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-tag">PERFORMANCE DEBRIEF REVIEW</span>
+        </div>
+        <div id="weekly-review">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
       <!-- Streaks -->
       <div class="stats-row">
         <div class="stat-card">
@@ -376,7 +427,10 @@
       <div class="card">
         <div class="card-header" style="justify-content: space-between; align-items: center;">
           <span class="card-tag">SHIFT ROSTER TEMPLATES</span>
-          <button class="btn btn-accent btn-sm" id="btn-add-shift" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">+ NEW SHIFT</button>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost btn-sm" id="btn-pull-notion" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">PULL NOTION</button>
+            <button class="btn btn-accent btn-sm" id="btn-add-shift" style="font-size:10px; font-family:var(--font-mono); padding: 4px 8px;">+ NEW SHIFT</button>
+          </div>
         </div>
         <div class="shifts-list" id="shifts-list" style="margin-top:12px;">
           <div class="empty-state">No shifts defined. Hit "+ NEW SHIFT" to begin.</div>
@@ -419,7 +473,7 @@
             </div>
             <div class="form-group">
               <label>ACTIVE DAYS</label>
-              <div class="day-picker" id="day-picker" style="display:flex; gap:4px; flex-wrap:wrap;">
+              <div class="day-picker" id="day-picker">
                 <button type="button" class="day-btn" data-day="0">SUN</button>
                 <button type="button" class="day-btn" data-day="1">MON</button>
                 <button type="button" class="day-btn" data-day="2">TUE</button>
@@ -455,12 +509,12 @@
 
           <div class="card" style="margin-bottom:0;">
             <div class="card-header"><span class="card-tag">WAKING HOURS</span></div>
-            <div class="form-row" style="display:flex; gap:10px;">
-              <div class="form-group" style="flex:1; margin-bottom:0;">
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
                 <label>WAKE TIME</label>
                 <input type="time" id="setting-wake" value="06:00">
               </div>
-              <div class="form-group" style="flex:1; margin-bottom:0;">
+              <div class="form-group" style="margin-bottom:0;">
                 <label>SLEEP TIME</label>
                 <input type="time" id="setting-sleep" value="00:00">
               </div>
@@ -492,7 +546,7 @@
             <div class="card-header"><span class="card-tag">ALARM SETTINGS</span></div>
             <div class="form-group" style="margin-bottom:0;">
               <label>ALERT TONE</label>
-              <select id="setting-alarm-tone" style="width:100%;background:var(--bg-body);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:10px;font-family:inherit;">
+              <select id="setting-alarm-tone" style="width:100%;background:rgba(5,6,14,0.45);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:10px;font-family:inherit;">
                 <option value="slack">Slack Huddle Ring (Familiar & Urgent)</option>
                 <option value="pulse">Chime Pulse (Pleasant but Urgent)</option>
                 <option value="echo">Echo Echo (Calm and Strategic)</option>
@@ -525,7 +579,6 @@
                 <div class="form-group" style="margin-bottom:4px;">
                   <label style="font-size:9px; letter-spacing:1px;">SHIFTS DATABASE ID</label>
                   <input type="text" id="setting-notion-shifts-id" style="padding:6px 10px; font-size:12px; font-family:var(--font-mono);" placeholder="e.g. 35b9e7a8adf381419a06d4fa6e235b0c">
-                  <span class="form-hint" style="font-size:9px; margin-top:2px;">Must be shared with "OneView LIFE OS" in Notion first.</span>
                 </div>
                 <div class="form-group" style="margin-bottom:8px;">
                   <label style="font-size:9px; letter-spacing:1px;">LOGS DATABASE ID</label>
@@ -552,7 +605,7 @@
           <div class="card" style="margin-bottom:0; background:none; border:none; padding:0;">
             <div class="system-info" style="text-align:center; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">
               <p>MySpace v1.0.0 — Live Operations</p>
-              <p class="form-hint" style="font-size:10px; margin-top:4px;">Built for operators who refuse to waste time.</p>
+              <p class="form-hint" style="font-size:10px; margin-top:4px;">Built for premium visual productivity.</p>
             </div>
           </div>
 
@@ -563,25 +616,45 @@
 
   </main>
 
+  <!-- ==================== FLOATING BOTTOM NAV DOCK ==================== -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="focus">
+      <span class="nav-icon">◎</span>
+      <span class="nav-label">FOCUS</span>
+    </button>
+    <button class="nav-tab" data-tab="tasks">
+      <span class="nav-icon">▦</span>
+      <span class="nav-label">TASKS</span>
+    </button>
+    <button class="nav-tab" data-tab="guide">
+      <span class="nav-icon">👁</span>
+      <span class="nav-label">GUIDE</span>
+    </button>
+    <button class="nav-tab" data-tab="oneview">
+      <span class="nav-icon">◩</span>
+      <span class="nav-label">ONEVIEW</span>
+    </button>
+  </nav>
+
   <!-- Clock Out Debrief Modal (Top level overlay) -->
   <div class="modal-overlay hidden" id="debrief-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>DEBRIEF</h3>
+        <h3>DEBRIEF OPERATIONS</h3>
       </div>
       <form id="debrief-form">
         <div class="form-group">
           <label>WHAT DID YOU ACCOMPLISH?</label>
-          <textarea id="debrief-notes" rows="4" placeholder="Brief debrief. What got done?"></textarea>
+          <textarea id="debrief-notes" rows="4" placeholder="Brief debrief notes..."></textarea>
         </div>
         <div class="form-group">
           <label>MISSION RATING</label>
           <div class="rating-picker" id="rating-picker" style="display:flex; gap:6px; justify-content:center;">
-            <button type="button" class="rating-btn" data-rating="1">1</button>
-            <button type="button" class="rating-btn" data-rating="2">2</button>
-            <button type="button" class="rating-btn" data-rating="3">3</button>
-            <button type="button" class="rating-btn" data-rating="4">4</button>
-            <button type="button" class="rating-btn" data-rating="5">5</button>
+            <button type="button" class="rating-btn btn btn-ghost btn-sm" style="flex:1;" data-rating="1">1</button>
+            <button type="button" class="rating-btn btn btn-ghost btn-sm" style="flex:1;" data-rating="2">2</button>
+            <button type="button" class="rating-btn btn btn-ghost btn-sm" style="flex:1;" data-rating="3">3</button>
+            <button type="button" class="rating-btn btn btn-ghost btn-sm" style="flex:1;" data-rating="4">4</button>
+            <button type="button" class="rating-btn btn btn-ghost btn-sm" style="flex:1;" data-rating="5">5</button>
           </div>
         </div>
         <div class="form-actions" style="display:flex; gap:10px;">

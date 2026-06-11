@@ -45,12 +45,32 @@ Format your response as direct, brief, commanding messages. Maximum 2-3 sentence
   try {
     // Map the conversation history to the Gemini API format
     // Gemini API roles must be either "user" or "model"
-    const contents = messages.map(msg => {
+    const rawContents = messages.map(msg => {
       return {
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }]
       };
     });
+
+    // Merge consecutive messages of the same role to enforce strict alternation
+    const contents = [];
+    rawContents.forEach(item => {
+      if (contents.length === 0) {
+        contents.push(item);
+      } else {
+        const lastItem = contents[contents.length - 1];
+        if (lastItem.role === item.role) {
+          lastItem.parts[0].text += '\n' + item.parts[0].text;
+        } else {
+          contents.push(item);
+        }
+      }
+    });
+
+    // Gemini API requires the first message in contents to be from the 'user' role
+    while (contents.length > 0 && contents[0].role !== 'user') {
+      contents.shift();
+    }
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',

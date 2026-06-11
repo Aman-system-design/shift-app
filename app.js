@@ -673,25 +673,28 @@
     const container = $('#shifts-list');
     if (!container) return;
 
-    if (state.shifts.length === 0) {
+    // Filter out visual/daily shifts (which have shift.date set)
+    const templates = state.shifts.filter(s => !s.date);
+
+    if (templates.length === 0) {
       container.innerHTML = '<div class="empty-state">No shifts defined. Your command center is empty.<br>Hit "+ NEW SHIFT" to begin operations.</div>';
       return;
     }
 
-    container.innerHTML = state.shifts.map(shift => {
+    container.innerHTML = templates.map(shift => {
       const color = catColor(shift.category);
-      const dayLabels = shift.date ? `DATE: ${shift.date}` : (shift.days || []).sort().map(d => DAYS_SHORT[d]).join(' · ');
+      const dayLabels = (shift.days || []).sort().map(d => DAYS_SHORT[d]).join(' · ');
       return `
-        <div class="shift-card" data-id="${shift.id}">
-          <div class="shift-cat-bar" style="background:${color}"></div>
-          <div class="shift-info">
-            <div class="shift-info-name">${shift.name}</div>
-            <div class="shift-info-meta">${shift.startTime} — ${shift.endTime} · ${shift.category}</div>
-            <div class="shift-info-days">${dayLabels}</div>
+        <div class="shift-card" data-id="${shift.id}" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 8px; transition: all 0.2s ease;">
+          <div class="shift-cat-bar" style="width: 4px; height: 36px; background:${color}; border-radius: 2px; margin-right: 12px;"></div>
+          <div class="shift-info" style="flex: 1;">
+            <div class="shift-info-name" style="font-weight: 600; font-size: 14px; color: var(--text-primary);">${shift.name}</div>
+            <div class="shift-info-meta" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${shift.startTime} — ${shift.endTime} · ${shift.category}</div>
+            <div class="shift-info-days" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 2px;">${dayLabels}</div>
           </div>
-          <div class="shift-actions">
-            <button class="edit-btn" onclick="SHIFT.editShift('${shift.id}')" title="Edit">✎</button>
-            <button class="delete-btn" onclick="SHIFT.deleteShift('${shift.id}')" title="Delete">✕</button>
+          <div class="shift-actions" style="display: flex; gap: 8px;">
+            <button class="btn btn-ghost btn-sm" onclick="SHIFT.editShift('${shift.id}')" style="padding: 6px 10px; font-size: 10px;">✎</button>
+            <button class="btn btn-ghost btn-sm" onclick="SHIFT.deleteShift('${shift.id}')" style="padding: 6px 10px; font-size: 10px; color: var(--danger); border-color: rgba(255,77,121,0.2);">✕</button>
           </div>
         </div>
       `;
@@ -1230,19 +1233,26 @@
   }
 
   function loadSettings() {
-    $('#setting-name').value = state.settings.name || '';
-    $('#setting-wake').value = state.settings.wakeTime || '06:00';
-    $('#setting-sleep').value = state.settings.sleepTime || '00:00';
-    $('#setting-cat-date').value = state.settings.catDate || '2026-11-23';
-    $('#setting-alarm-tone').value = state.settings.alarmTone || 'pulse';
+    const nameEl = $('#setting-name');
+    const wakeEl = $('#setting-wake');
+    const sleepEl = $('#setting-sleep');
+    const catDateEl = $('#setting-cat-date');
+    const toneSelect = $('#setting-alarm-tone');
+
+    if (nameEl) nameEl.value = state.settings.name || '';
+    if (wakeEl) wakeEl.value = state.settings.wakeTime || '06:00';
+    if (sleepEl) sleepEl.value = state.settings.sleepTime || '00:00';
+    if (catDateEl) catDateEl.value = state.settings.catDate || '2026-11-23';
+    if (toneSelect) toneSelect.value = state.settings.alarmTone || 'pulse';
 
     const toggleBtn = $('#toggle-notifications');
+    const notifStatus = $('#notif-status');
     if (state.settings.notifications) {
       if (toggleBtn) toggleBtn.classList.add('active');
-      $('#notif-status').textContent = 'Notifications enabled';
+      if (notifStatus) notifStatus.textContent = 'Notifications enabled';
     } else {
       if (toggleBtn) toggleBtn.classList.remove('active');
-      $('#notif-status').textContent = 'Notifications not enabled';
+      if (notifStatus) notifStatus.textContent = 'Notifications not enabled';
     }
 
     if ($('#setting-notion-tasks-id')) $('#setting-notion-tasks-id').value = state.notionTasksDatabaseId || '';
@@ -1298,58 +1308,67 @@
     }
 
     // Notifications toggle
-    $('#toggle-notifications').addEventListener('click', async () => {
-      const btn = $('#toggle-notifications');
-      if (state.settings.notifications) {
-        state.settings.notifications = false;
-        btn.classList.remove('active');
-        $('#notif-status').textContent = 'Notifications not enabled';
-      } else {
-        if ('Notification' in window) {
-          const perm = await Notification.requestPermission();
-          if (perm === 'granted') {
-            state.settings.notifications = true;
-            btn.classList.add('active');
-            $('#notif-status').textContent = 'Notifications enabled';
-          } else {
-            $('#notif-status').textContent = 'Permission denied by browser';
-          }
+    const toggleNotifBtn = $('#toggle-notifications');
+    if (toggleNotifBtn) {
+      toggleNotifBtn.addEventListener('click', async () => {
+        const btn = $('#toggle-notifications');
+        const notifStatus = $('#notif-status');
+        if (state.settings.notifications) {
+          state.settings.notifications = false;
+          if (btn) btn.classList.remove('active');
+          if (notifStatus) notifStatus.textContent = 'Notifications not enabled';
         } else {
-          $('#notif-status').textContent = 'Notifications not supported';
+          if ('Notification' in window) {
+            const perm = await Notification.requestPermission();
+            if (perm === 'granted') {
+              state.settings.notifications = true;
+              if (btn) btn.classList.add('active');
+              if (notifStatus) notifStatus.textContent = 'Notifications enabled';
+            } else {
+              if (notifStatus) notifStatus.textContent = 'Permission denied by browser';
+            }
+          } else {
+            if (notifStatus) notifStatus.textContent = 'Notifications not supported';
+          }
         }
-      }
-      persist();
-    });
+        persist();
+      });
+    }
 
     // Export
-    $('#btn-export').addEventListener('click', () => {
-      const data = {
-        shifts: state.shifts,
-        logs: state.logs,
-        settings: state.settings,
-        streaks: state.streaks,
-        exportDate: new Date().toISOString(),
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `shift-backup-${getTodayStr()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
+    const exportBtn = $('#btn-export');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        const data = {
+          shifts: state.shifts,
+          logs: state.logs,
+          settings: state.settings,
+          streaks: state.streaks,
+          exportDate: new Date().toISOString(),
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `shift-backup-${getTodayStr()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
 
     // Clear data
-    $('#btn-clear-data').addEventListener('click', () => {
-      if (!confirm('⚠ PURGE ALL DATA? This cannot be undone. All shifts, logs, and streaks will be destroyed.')) return;
-      if (!confirm('Are you absolutely sure? Last chance.')) return;
-      localStorage.clear();
-      state.shifts = [];
-      state.logs = [];
-      state.session = null;
-      state.settings = { name: '', wakeTime: '06:00', sleepTime: '00:00', catDate: '2026-11-23', notifications: false };
-      state.streaks = { current: 0, best: 0, lastDate: null };
-      state.notionDatabaseId = null;
+    const clearBtn = $('#btn-clear-data');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        if (!confirm('⚠ PURGE ALL DATA? This cannot be undone. All shifts, logs, and streaks will be destroyed.')) return;
+        if (!confirm('Are you absolutely sure? Last chance.')) return;
+        localStorage.clear();
+        state.shifts = [];
+        state.logs = [];
+        state.session = null;
+        state.settings = { name: '', wakeTime: '06:00', sleepTime: '00:00', catDate: '2026-11-23', notifications: false };
+        state.streaks = { current: 0, best: 0, lastDate: null };
+        state.notionDatabaseId = null;
       state.notionDatabaseUrl = null;
       state.notionSyncBacklog = [];
       persist();
@@ -1946,13 +1965,30 @@
       nextTaskName.textContent = nextTask.name;
       nextTaskSlot.textContent = nextTask.slot ? nextTask.slot.toUpperCase() : 'NO SLOT';
       const goalName = state.goals?.find(g => g.id === nextTask.goalId)?.name || 'None';
-      nextTaskMeta.textContent = `Goal: ${goalName}`;
+      
+      let metaText = `Goal: ${goalName}`;
+      if (nextTask.priority) {
+        metaText += ` | Priority: ${nextTask.priority}`;
+      }
+      if (nextTask.doDate) {
+        const d = new Date(nextTask.doDate);
+        metaText += ` | Do: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      }
+      if (nextTask.dueDate) {
+        const d = new Date(nextTask.dueDate);
+        metaText += ` | Due: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      }
+      if (nextTask.description) {
+        metaText += `<br><span style="font-size: 11px; opacity: 0.7; display: block; margin-top: 4px;">${nextTask.description}</span>`;
+      }
+      nextTaskMeta.innerHTML = metaText;
+
       if (nextTaskActions) nextTaskActions.style.display = 'block';
       if (nextTaskCard) nextTaskCard.style.borderLeftColor = 'var(--accent)';
     } else {
       nextTaskName.textContent = 'All tasks completed. Fulfill your dharma.';
       nextTaskSlot.textContent = '—';
-      nextTaskMeta.textContent = 'Goal: None';
+      nextTaskMeta.innerHTML = 'Goal: None';
       if (nextTaskActions) nextTaskActions.style.display = 'none';
       if (nextTaskCard) nextTaskCard.style.borderLeftColor = 'var(--border)';
     }
@@ -2016,7 +2052,19 @@
       const meta = document.createElement('p');
       meta.className = 'task-item-meta';
       const goalName = state.goals?.find(g => g.id === task.goalId)?.name || 'None';
-      meta.textContent = `${task.slot ? '[' + task.slot + '] ' : ''}Goal: ${goalName}`;
+      let metaText = `${task.slot ? '[' + task.slot + '] ' : ''}Goal: ${goalName}`;
+      if (task.priority) {
+        metaText += ` | Priority: ${task.priority}`;
+      }
+      if (task.doDate) {
+        const d = new Date(task.doDate);
+        metaText += ` | Do: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      }
+      if (task.dueDate) {
+        const d = new Date(task.dueDate);
+        metaText += ` | Due: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      }
+      meta.textContent = metaText;
 
       content.appendChild(name);
       content.appendChild(meta);
